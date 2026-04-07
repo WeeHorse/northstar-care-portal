@@ -32,6 +32,15 @@ describe("admin controls e2e", () => {
       const method = options.method || "GET";
       const asText = String(url);
 
+      if (asText.includes("/api/auth/me") && method === "GET") {
+        return {
+          ok: true,
+          json: async () => ({
+            user: { id: 4, username: "adam.admin", fullName: "Adam Admin", role: "Admin" }
+          })
+        };
+      }
+
       if (asText.includes("/api/admin/users")) {
         return { ok: true, json: async () => ({ items: [{ id: 1, username: "anna.support", role: "SupportAgent" }], total: 1 }) };
       }

@@ -19,16 +19,22 @@ describe("meetingsService", () => {
   });
 
   it("denies non-owner support user from reading meeting", () => {
+    const writes = [];
     const service = createMeetingsService({
       meetingsRepository: {
         findById() {
           return { id: 1, created_by_user_id: 2, team: "support" };
         }
       },
-      auditRepository: { write() { } }
+      auditRepository: {
+        write(event) {
+          writes.push(event);
+        }
+      }
     });
 
     const item = service.getMeetingById({ id: 1, user: { id: 1, role: "SupportAgent" } });
     expect(item).toEqual({ denied: true });
+    expect(writes[0]?.result).toBe("denied");
   });
 });

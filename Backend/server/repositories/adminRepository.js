@@ -39,6 +39,19 @@ export function createAdminRepository(db) {
          ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`
       ).run(mode, now);
       return this.getSecurityMode();
+    },
+    getAssistantRoleAwareMode() {
+      const row = db.prepare("SELECT value FROM system_settings WHERE key = 'assistant_role_aware_mode'").get();
+      return row?.value === "enabled" ? "enabled" : "disabled";
+    },
+    setAssistantRoleAwareMode(mode) {
+      const now = new Date().toISOString();
+      db.prepare(
+        `INSERT INTO system_settings (key, value, updated_at)
+         VALUES ('assistant_role_aware_mode', ?, ?)
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`
+      ).run(mode, now);
+      return this.getAssistantRoleAwareMode();
     }
   };
 }

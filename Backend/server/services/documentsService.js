@@ -1,15 +1,43 @@
 export function createDocumentsService({ documentsRepository, auditRepository }) {
+  function parseTags(rawTags) {
+    if (!rawTags) return [];
+    return String(rawTags)
+      .split(",")
+      .map((tag) => tag.trim())
+      .filter(Boolean);
+  }
+
+  function serializeTags(tags) {
+    if (!tags) return null;
+    if (Array.isArray(tags)) {
+      return tags.map((tag) => String(tag).trim()).filter(Boolean).join(",");
+    }
+    return String(tags)
+      .split(",")
+      .map((tag) => tag.trim())
+      .filter(Boolean)
+      .join(",");
+  }
+
+  function toDocumentDto(item) {
+    return {
+      id: item.id,
+      title: item.title,
+      description: item.description,
+      classification: item.classification,
+      category: item.category,
+      tags: parseTags(item.tags),
+      createdAt: item.created_at,
+      updatedAt: item.updated_at
+    };
+  }
+
   return {
-    listDocuments(user) {
-      return documentsRepository.listAccessible(user.role).map((item) => ({
-        id: item.id,
-        title: item.title,
-        description: item.description,
-        classification: item.classification,
-        category: item.category,
-        createdAt: item.created_at,
-        updatedAt: item.updated_at
-      }));
+    listDocuments(user, filters = {}) {
+      return documentsRepository.listAccessible(user.role, filters).map(toDocumentDto);
+    },
+    searchDocuments({ user, title, tag, category }) {
+      return documentsRepository.listAccessible(user.role, { title, tag, category }).map(toDocumentDto);
     },
     getDocumentById({ id, user }) {
       const item = documentsRepository.findByIdAccessible(id, user.role);
@@ -23,15 +51,7 @@ export function createDocumentsService({ documentsRepository, auditRepository })
         entityId: String(item.id),
         result: "success"
       });
-      return {
-        id: item.id,
-        title: item.title,
-        description: item.description,
-        classification: item.classification,
-        category: item.category,
-        createdAt: item.created_at,
-        updatedAt: item.updated_at
-      };
+      return toDocumentDto(item);
     },
     createDocument({ payload, user }) {
       const created = documentsRepository.create({
@@ -39,6 +59,7 @@ export function createDocumentsService({ documentsRepository, auditRepository })
         description: payload.description,
         classification: payload.classification || "Internal",
         category: payload.category || "general",
+        tags: serializeTags(payload.tags),
         uploadedByUserId: user.id
       });
 
@@ -55,15 +76,26 @@ export function createDocumentsService({ documentsRepository, auditRepository })
         result: "success"
       });
 
-      return {
-        id: created.id,
-        title: created.title,
-        description: created.description,
-        classification: created.classification,
-        category: created.category,
-        createdAt: created.created_at,
-        updatedAt: created.updated_at
-      };
+      return toDocumentDto(created);
+    },
+    classifyDocument({ id, classification, user }) {
+      const allowed = new Set(["Public", "Internal", "Confidential", "Restricted"]);
+      if (!allowed.has(classification)) {
+        return { invalidClassification: true };
+      }
+      const updated = documentsRepository.updateClassification(id, classification);
+      if (!updated) {
+        return null;
+      }
+      auditRepository.write({
+        actorUserId: user.id,
+        eventType: "document_classify",
+        entityType: "document",
+        entityId: String(id),
+        result: "success",
+        metadataJson: JSON.stringify({ classification })
+      });
+      return toDocumentDto(updated);
     }
   };
 }

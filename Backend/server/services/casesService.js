@@ -21,6 +21,13 @@ export function createCasesService({ casesRepository, auditRepository }) {
         return null;
       }
       if (user.role === "SupportAgent" && item.assigned_user_id !== user.id) {
+        auditRepository.write({
+          actorUserId: user.id,
+          eventType: "case_view",
+          entityType: "case",
+          entityId: String(id),
+          result: "denied"
+        });
         return { denied: true };
       }
       return item;
@@ -50,6 +57,13 @@ export function createCasesService({ casesRepository, auditRepository }) {
         return null;
       }
       if (user.role === "SupportAgent" && existing.assigned_user_id !== user.id) {
+        auditRepository.write({
+          actorUserId: user.id,
+          eventType: "case_update",
+          entityType: "case",
+          entityId: String(id),
+          result: "denied"
+        });
         return { denied: true };
       }
       const updated = casesRepository.update(id, payload);

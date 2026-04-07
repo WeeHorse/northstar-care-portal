@@ -56,6 +56,7 @@ CREATE TABLE IF NOT EXISTS documents (
   description TEXT,
   classification TEXT NOT NULL,
   category TEXT,
+  tags TEXT,
   uploaded_by_user_id INTEGER,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
@@ -113,4 +114,10 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   metadata_json TEXT,
   created_at TEXT NOT NULL,
   FOREIGN KEY (actor_user_id) REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS revoked_tokens (
+  jti TEXT PRIMARY KEY,
+  expires_at INTEGER NOT NULL,
+  created_at TEXT NOT NULL
 );

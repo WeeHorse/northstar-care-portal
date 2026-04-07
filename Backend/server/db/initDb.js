@@ -6,6 +6,12 @@ function nowIso() {
   return new Date().toISOString();
 }
 
+function addDays(baseDate, offsetDays) {
+  const next = new Date(baseDate);
+  next.setUTCDate(next.getUTCDate() + offsetDays);
+  return next;
+}
+
 export function initDb(db) {
   const schemaPath = path.resolve("server/db/schema.sql");
   const schemaSql = fs.readFileSync(schemaPath, "utf8");
@@ -37,29 +43,42 @@ export function initDb(db) {
     const insertCase = db.prepare(
       "INSERT INTO cases (external_ref, title, description, status, priority, assigned_user_id, team, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
     );
-    const t = nowIso();
-    insertCase.run(
-      "NS-2026-001",
-      "Portal login intermittent failure",
-      "Users report temporary login failures during peak load.",
-      "open",
-      "high",
-      1,
-      "support",
-      t,
-      t
+    const statuses = ["open", "in_progress", "pending", "closed"];
+    const priorities = ["low", "medium", "high"];
+    const teams = ["support", "clinical", "operations"];
+    const base = new Date("2026-04-01T08:00:00.000Z");
+
+    for (let i = 1; i <= 36; i += 1) {
+      const stamp = addDays(base, i).toISOString();
+      insertCase.run(
+        `NS-2026-${String(i).padStart(3, "0")}`,
+        `Case ${i}: ${(i % 2 === 0) ? "Access" : "Workflow"} follow-up`,
+            `Seeded case ${i} for demo filtering, updates, and role scope verification.`,
+        statuses[(i - 1) % statuses.length],
+        priorities[(i - 1) % priorities.length],
+        ((i - 1) % 4) + 1,
+        teams[(i - 1) % teams.length],
+        stamp,
+        stamp
+      );
+    }
+  }
+
+  const commentCount = db.prepare("SELECT COUNT(*) AS count FROM case_comments").get().count;
+  if (commentCount === 0) {
+    const insertComment = db.prepare(
+      "INSERT INTO case_comments (case_id, user_id, comment_text, created_at) VALUES (?, ?, ?, ?)"
     );
-    insertCase.run(
-      "NS-2026-002",
-      "Document classification mismatch",
-      "A document appears with broader visibility than expected.",
-      "open",
-      "medium",
-      1,
-      "support",
-      t,
-      t
-    );
+    const base = new Date("2026-04-03T09:00:00.000Z");
+
+    for (let i = 1; i <= 36; i += 1) {
+      insertComment.run(
+        i,
+        ((i - 1) % 4) + 1,
+        `Seeded comment ${ i } for case ${ i }.`,
+        addDays(base, i).toISOString()
+      );
+    }
   }
 
   const recordCount = db.prepare("SELECT COUNT(*) AS count FROM records").get().count;
@@ -67,9 +86,24 @@ export function initDb(db) {
     const insertRecord = db.prepare(
       "INSERT INTO records (patient_ref, summary, status, sensitivity_level, last_contact_at, owner_team, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
     );
-    const t = nowIso();
-    insertRecord.run("PT-1001", "Follow-up needed after digital consultation.", "active", "restricted", t, "clinical", t, t);
-    insertRecord.run("PT-1002", "Routine wellness check completed.", "active", "internal", t, "support", t, t);
+    const statuses = ["active", "pending", "archived"];
+    const sensitivity = ["restricted", "internal", "confidential"];
+    const ownerTeams = ["clinical", "support", "operations"];
+    const base = new Date("2026-04-01T10:00:00.000Z");
+
+    for (let i = 1; i <= 36; i += 1) {
+      const stamp = addDays(base, i).toISOString();
+      insertRecord.run(
+        `PT - ${ String(1000 + i) } `,
+            `Seeded patient record ${i} summary for workflow demonstrations.`,
+        statuses[(i - 1) % statuses.length],
+          sensitivity[(i - 1) % sensitivity.length],
+          stamp,
+          ownerTeams[(i - 1) % ownerTeams.length],
+          stamp,
+          stamp
+      );
+    }
   }
 
   const documentCount = db.prepare("SELECT COUNT(*) AS count FROM documents").get().count;
@@ -80,32 +114,29 @@ export function initDb(db) {
     const insertPermission = db.prepare(
       "INSERT INTO document_permissions (document_id, role_id, access_level) VALUES (?, ?, ?)"
     );
-    const t = nowIso();
+    const classifications = ["Internal", "Confidential", "Restricted"];
+    const categories = ["policy", "procedure", "operations", "security"];
+    const base = new Date("2026-04-02T11:00:00.000Z");
 
-    const supportGuide = insertDocument.run(
-      "Support Escalation Guide",
-      "Steps for escalation and triage in support queue.",
-      "Internal",
-      "procedure",
-      4,
-      t,
-      t
-    );
-    insertPermission.run(supportGuide.lastInsertRowid, 1, "read");
-    insertPermission.run(supportGuide.lastInsertRowid, 2, "read");
-    insertPermission.run(supportGuide.lastInsertRowid, 4, "read");
+    for (let i = 1; i <= 36; i += 1) {
+      const stamp = addDays(base, i).toISOString();
+      const created = insertDocument.run(
+        `Seeded Document ${i}`,
+            `Reference document ${i} for role-aware listing and search.`,
+        classifications[(i - 1) % classifications.length],
+        categories[(i - 1) % categories.length],
+        ((i - 1) % 4) + 1,
+        stamp,
+        stamp
+      );
 
-    const clinicalNote = insertDocument.run(
-      "Clinical Data Handling",
-      "Policy for handling clinical metadata and access boundaries.",
-      "Confidential",
-      "policy",
-      4,
-      t,
-      t
-    );
-    insertPermission.run(clinicalNote.lastInsertRowid, 3, "read");
-    insertPermission.run(clinicalNote.lastInsertRowid, 4, "read");
+      const documentId = created.lastInsertRowid;
+      insertPermission.run(documentId, 4, "read");
+      insertPermission.run(documentId, ((i - 1) % 3) + 1, "read");
+      if (i % 5 === 0) {
+        insertPermission.run(documentId, 2, "read");
+      }
+    }
   }
 
   const procedureCount = db.prepare("SELECT COUNT(*) AS count FROM procedures").get().count;
@@ -113,25 +144,23 @@ export function initDb(db) {
     const insertProcedure = db.prepare(
       "INSERT INTO procedures (title, body_markdown, category, classification, owner_team, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
     );
-    const t = nowIso();
-    insertProcedure.run(
-      "Escalering av journalarende",
-      "Verifiera identitet och folj NS-PROC-12 for eskalering.",
-      "clinical",
-      "Internal",
-      "clinical",
-      t,
-      t
-    );
-    insertProcedure.run(
-      "Incident triage for portal",
-      "1. Klassificera incident. 2. Prioritera. 3. Tilldela ansvarig.",
-      "support",
-      "Internal",
-      "support",
-      t,
-      t
-    );
+    const categories = ["support", "clinical", "operations", "security"];
+    const classifications = ["Internal", "Confidential"];
+    const ownerTeams = ["support", "clinical", "operations"];
+    const base = new Date("2026-04-04T08:30:00.000Z");
+
+    for (let i = 1; i <= 36; i += 1) {
+      const stamp = addDays(base, i).toISOString();
+      insertProcedure.run(
+        `Seeded Procedure ${ i }`,
+            `1. Validate request. 2. Apply policy ${i}. 3. Record audit trail.`,
+        categories[(i - 1) % categories.length],
+        classifications[(i - 1) % classifications.length],
+        ownerTeams[(i - 1) % ownerTeams.length],
+        stamp,
+        stamp
+      );
+    }
   }
 
   const meetingCount = db.prepare("SELECT COUNT(*) AS count FROM meetings").get().count;
@@ -139,31 +168,27 @@ export function initDb(db) {
     const insertMeeting = db.prepare(
       "INSERT INTO meetings (title, description, meeting_type, start_at, end_at, teams_link, created_by_user_id, team, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
     );
-    const t = nowIso();
-    insertMeeting.run(
-      "Case follow-up PT-1001",
-      "Digital uppfoljning med patient.",
-      "digital",
-      "2026-04-08T09:00:00.000Z",
-      "2026-04-08T09:30:00.000Z",
-      "https://teams.example/meeting/1",
-      1,
-      "support",
-      t,
-      t
-    );
-    insertMeeting.run(
-      "Team incident review",
-      "Daglig avstamning for supportteam.",
-      "internal",
-      "2026-04-08T10:00:00.000Z",
-      "2026-04-08T10:30:00.000Z",
-      "https://teams.example/meeting/2",
-      2,
-      "support",
-      t,
-      t
-    );
+    const teams = ["support", "clinical", "operations"];
+    const meetingTypes = ["digital", "internal"];
+    const base = new Date("2026-04-08T08:00:00.000Z");
+
+    for (let i = 1; i <= 36; i += 1) {
+      const start = new Date(base.getTime() + (i * 45 * 60 * 1000));
+      const end = new Date(start.getTime() + (30 * 60 * 1000));
+      const createdAt = addDays(base, Math.floor(i / 6)).toISOString();
+      insertMeeting.run(
+        `Seeded Meeting ${i}`,
+            `Seeded meeting ${i} for calendar and filtering demos.`,
+        meetingTypes[(i - 1) % meetingTypes.length],
+        start.toISOString(),
+        end.toISOString(),
+        `https://teams.example/meeting/${i}`,
+        ((i - 1) % 4) + 1,
+        teams[(i - 1) % teams.length],
+        createdAt,
+        createdAt
+      );
+    }
   }
 
   const settingsCount = db.prepare("SELECT COUNT(*) AS count FROM system_settings").get().count;
@@ -173,5 +198,20 @@ export function initDb(db) {
       "secure",
       nowIso()
     );
+  }
+
+  const assistantMode = db.prepare("SELECT value FROM system_settings WHERE key = 'assistant_role_aware_mode'").get();
+  if (!assistantMode) {
+    db.prepare("INSERT INTO system_settings (key, value, updated_at) VALUES (?, ?, ?)").run(
+      "assistant_role_aware_mode",
+      "disabled",
+      nowIso()
+    );
+  }
+
+  const documentColumns = db.prepare("PRAGMA table_info(documents)").all();
+  const hasTagsColumn = documentColumns.some((column) => column.name === "tags");
+  if (!hasTagsColumn) {
+    db.exec("ALTER TABLE documents ADD COLUMN tags TEXT");
   }
 }

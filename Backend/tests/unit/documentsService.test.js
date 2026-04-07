@@ -13,6 +13,7 @@ describe("documentsService", () => {
               description: "desc",
               classification: "Internal",
               category: "procedure",
+              tags: "triage,policy",
               created_at: "2026-01-01",
               updated_at: "2026-01-02"
             }
@@ -29,6 +30,7 @@ describe("documentsService", () => {
       description: "desc",
       classification: "Internal",
       category: "procedure",
+      tags: ["triage", "policy"],
       createdAt: "2026-01-01",
       updatedAt: "2026-01-02"
     });
@@ -67,5 +69,33 @@ describe("documentsService", () => {
 
     expect(created.id).toBe(10);
     expect(calls[1]).toEqual(["grantRoleAccess", 10, 2, "owner"]);
+  });
+
+  it("classifies document with valid level", () => {
+    const service = createDocumentsService({
+      documentsRepository: {
+        updateClassification() {
+          return {
+            id: 1,
+            title: "Policy",
+            description: "",
+            classification: "Restricted",
+            category: "policy",
+            tags: null,
+            created_at: "t1",
+            updated_at: "t2"
+          };
+        }
+      },
+      auditRepository: { write() { } }
+    });
+
+    const updated = service.classifyDocument({
+      id: 1,
+      classification: "Restricted",
+      user: { id: 4, role: "Admin" }
+    });
+
+    expect(updated.classification).toBe("Restricted");
   });
 });

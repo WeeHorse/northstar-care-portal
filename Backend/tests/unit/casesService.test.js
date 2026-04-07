@@ -20,16 +20,22 @@ describe("casesService", () => {
   });
 
   it("denies support agent from reading non-assigned case", () => {
+    const writes = [];
     const service = createCasesService({
       casesRepository: {
         findById() {
           return { id: 1, assigned_user_id: 2 };
         }
       },
-      auditRepository: { write() { } }
+      auditRepository: {
+        write(event) {
+          writes.push(event);
+        }
+      }
     });
 
     const result = service.getCaseById({ id: 1, user: { id: 1, role: "SupportAgent" } });
     expect(result).toEqual({ denied: true });
+    expect(writes[0]?.result).toBe("denied");
   });
 });

@@ -1,7 +1,20 @@
 export function createDocumentsController(documentsService) {
   return {
     list(req, res) {
-      const items = documentsService.listDocuments(req.user);
+      const items = documentsService.listDocuments(req.user, {
+        title: req.query.title,
+        category: req.query.category,
+        tag: req.query.tag
+      });
+      return res.status(200).json({ items, total: items.length });
+    },
+    search(req, res) {
+      const items = documentsService.searchDocuments({
+        user: req.user,
+        title: req.query.title,
+        category: req.query.category,
+        tag: req.query.tag
+      });
       return res.status(200).json({ items, total: items.length });
     },
     getById(req, res) {
@@ -18,6 +31,26 @@ export function createDocumentsController(documentsService) {
       }
       const created = documentsService.createDocument({ payload: req.body, user: req.user });
       return res.status(201).json(created);
+    },
+    classify(req, res) {
+      const classification = req.body?.classification;
+      if (!classification) {
+        return res.status(400).json({ error: "classification is required" });
+      }
+
+      const result = documentsService.classifyDocument({
+        id: Number(req.params.id),
+        classification,
+        user: req.user
+      });
+
+      if (!result) {
+        return res.status(404).json({ error: "Document not found" });
+      }
+      if (result.invalidClassification) {
+        return res.status(400).json({ error: "Invalid classification" });
+      }
+      return res.status(200).json(result);
     }
   };
 }

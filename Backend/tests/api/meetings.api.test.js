@@ -51,4 +51,17 @@ describe("Meetings API", () => {
     expect(updated.status).toBe(200);
     expect(updated.body.title).toBe("API Meeting Updated");
   });
+
+  it("filters meetings by day", async () => {
+    const { app } = createTestContext();
+    const token = await login(app, "adam.admin");
+
+    const response = await request(app)
+      .get("/api/meetings?day=2026-04-08")
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(response.status).toBe(200);
+    expect(Array.isArray(response.body.items)).toBe(true);
+    expect(response.body.total).toBeGreaterThanOrEqual(1);
+  });
 });

@@ -6,13 +6,16 @@ function canAccessMeeting(user, meeting) {
 
 export function createMeetingsService({ meetingsRepository, auditRepository }) {
   return {
-    listMeetings({ user, team }) {
+    listMeetings({ user, team, day }) {
       const filters = {};
       if (user.role === "SupportAgent") {
         filters.createdByUserId = user.id;
       }
       if (team && ["Manager", "Admin"].includes(user.role)) {
         filters.team = team;
+      }
+      if (day) {
+        filters.day = day;
       }
       const items = meetingsRepository.list(filters);
       return items.map((item) => ({
@@ -35,6 +38,13 @@ export function createMeetingsService({ meetingsRepository, auditRepository }) {
         return null;
       }
       if (!canAccessMeeting(user, item)) {
+        auditRepository.write({
+          actorUserId: user.id,
+          eventType: "meeting_view",
+          entityType: "meeting",
+          entityId: String(id),
+          result: "denied"
+        });
         return { denied: true };
       }
       return {
@@ -91,6 +101,13 @@ export function createMeetingsService({ meetingsRepository, auditRepository }) {
         return null;
       }
       if (!canAccessMeeting(user, existing)) {
+        auditRepository.write({
+          actorUserId: user.id,
+          eventType: "meeting_update",
+          entityType: "meeting",
+          entityId: String(id),
+          result: "denied"
+        });
         return { denied: true };
       }
 

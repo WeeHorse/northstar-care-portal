@@ -12,6 +12,10 @@ export function createMeetingsRepository(db) {
         where.push("created_by_user_id = ?");
         values.push(filters.createdByUserId);
       }
+      if (filters.day) {
+        where.push("date(start_at) = date(?)");
+        values.push(filters.day);
+      }
 
       const whereClause = where.length ? `WHERE ${where.join(" AND ")}` : "";
       return db
