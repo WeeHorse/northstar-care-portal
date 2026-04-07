@@ -14,6 +14,7 @@ const DocumentsPage = lazy(() => import("../pages/DocumentsPage").then((m) => ({
 const ProceduresPage = lazy(() => import("../pages/ProceduresPage").then((m) => ({ default: m.ProceduresPage })));
 const MeetingsPage = lazy(() => import("../pages/MeetingsPage").then((m) => ({ default: m.MeetingsPage })));
 const AdminPage = lazy(() => import("../pages/AdminPage").then((m) => ({ default: m.AdminPage })));
+const AssistantPage = lazy(() => import("../pages/AssistantPage").then((m) => ({ default: m.AssistantPage })));
 
 function ProtectedLayout({ children }) {
   return (
@@ -39,6 +40,7 @@ export function App() {
       <Route path="/documents" element={<ProtectedLayout><DocumentsPage /></ProtectedLayout>} />
       <Route path="/procedures" element={<ProtectedLayout><ProceduresPage /></ProtectedLayout>} />
       <Route path="/meetings" element={<ProtectedLayout><MeetingsPage /></ProtectedLayout>} />
+      <Route path="/assistant" element={<ProtectedLayout><AssistantPage /></ProtectedLayout>} />
       <Route path="/admin" element={<ProtectedLayout><AdminPage /></ProtectedLayout>} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>

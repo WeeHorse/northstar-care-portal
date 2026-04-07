@@ -56,6 +56,7 @@ CREATE TABLE IF NOT EXISTS documents (
   description TEXT,
   classification TEXT NOT NULL,
   category TEXT,
+  tags TEXT,
   uploaded_by_user_id INTEGER,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,

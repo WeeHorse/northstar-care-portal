@@ -20,6 +20,7 @@ import { createDocumentsService } from "./services/documentsService.js";
 import { createProceduresService } from "./services/proceduresService.js";
 import { createMeetingsService } from "./services/meetingsService.js";
 import { createAdminService } from "./services/adminService.js";
+import { createAssistantService } from "./services/assistantService.js";
 import { createAuthController } from "./controllers/authController.js";
 import { createCasesController } from "./controllers/casesController.js";
 import { createRecordsController } from "./controllers/recordsController.js";
@@ -27,6 +28,7 @@ import { createDocumentsController } from "./controllers/documentsController.js"
 import { createProceduresController } from "./controllers/proceduresController.js";
 import { createMeetingsController } from "./controllers/meetingsController.js";
 import { createAdminController } from "./controllers/adminController.js";
+import { createAssistantController } from "./controllers/assistantController.js";
 import { createAuthRouter } from "./routes/auth.routes.js";
 import { createCasesRouter } from "./routes/cases.routes.js";
 import { createRecordsRouter } from "./routes/records.routes.js";
@@ -34,6 +36,7 @@ import { createDocumentsRouter } from "./routes/documents.routes.js";
 import { createProceduresRouter } from "./routes/procedures.routes.js";
 import { createMeetingsRouter } from "./routes/meetings.routes.js";
 import { createAdminRouter } from "./routes/admin.routes.js";
+import { createAssistantRouter } from "./routes/assistant.routes.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_WWWROOT = path.resolve(__dirname, "../wwwroot");
@@ -60,6 +63,12 @@ export function createApp({ db, jwtSecret, staticRoot = DEFAULT_WWWROOT }) {
   const proceduresService = createProceduresService({ proceduresRepository, auditRepository });
   const meetingsService = createMeetingsService({ meetingsRepository, auditRepository });
   const adminService = createAdminService({ adminRepository, auditRepository });
+  const assistantService = createAssistantService({
+    documentsRepository,
+    proceduresRepository,
+    adminRepository,
+    auditRepository
+  });
 
   const authController = createAuthController(authService);
   const casesController = createCasesController(casesService);
@@ -68,6 +77,7 @@ export function createApp({ db, jwtSecret, staticRoot = DEFAULT_WWWROOT }) {
   const proceduresController = createProceduresController(proceduresService);
   const meetingsController = createMeetingsController(meetingsService);
   const adminController = createAdminController(adminService);
+  const assistantController = createAssistantController(assistantService);
 
   app.get("/health", (req, res) => res.status(200).json({ status: "ok" }));
   app.use("/api/auth", createAuthRouter({ authController, authMiddleware }));
@@ -77,6 +87,7 @@ export function createApp({ db, jwtSecret, staticRoot = DEFAULT_WWWROOT }) {
   app.use("/api/procedures", createProceduresRouter({ proceduresController, authMiddleware }));
   app.use("/api/meetings", createMeetingsRouter({ meetingsController, authMiddleware }));
   app.use("/api/admin", createAdminRouter({ adminController, authMiddleware }));
+  app.use("/api/assistant", createAssistantRouter({ assistantController, authMiddleware }));
 
   const indexPath = path.join(staticRoot, "index.html");
   if (fs.existsSync(indexPath)) {

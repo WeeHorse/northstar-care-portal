@@ -8,6 +8,7 @@ const navItems = [
   { to: "/documents", label: "Documents" },
   { to: "/procedures", label: "Procedures" },
   { to: "/meetings", label: "Meetings" },
+  { to: "/assistant", label: "Assistant" },
   { to: "/admin", label: "Admin" }
 ];
 

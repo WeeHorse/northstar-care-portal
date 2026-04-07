@@ -14,12 +14,19 @@ Frontend baseline is implemented in [Frontend](../Frontend) with:
   - /documents
   - /procedures
   - /meetings
+  - /assistant
   - /admin
 - API client integration against backend REST APIs
 - Persistent session in localStorage
 - Create/edit forms for cases and meetings with optimistic UI updates
 - Admin role-assignment controls and audit filter controls
+- Document search (title/tag/category) and admin document classification controls
+- Assistant question flow with source rendering and permission mismatch indicator support
+- Admin assistant guard mode toggle and mismatch event list
 - Responsive UI layout for desktop and mobile
+
+Cross-reference:
+- Full user-story implementation status is maintained in [Documentation/User-Story-Coverage.md](./User-Story-Coverage.md).
 
 ## Run frontend locally
 
@@ -59,9 +66,9 @@ npm test
 
 ## Current passing suites
 
-- Unit: auth context session behavior
-- API: frontend API client requests, mutation helpers, and filter query handling
-- E2E: login flow to dashboard, cases create/edit flow, and admin controls flow
+- Unit: auth context session behavior and assistant page behavior
+- API: frontend API client requests, mutation helpers, filter query handling, document search/classification calls, and assistant calls
+- E2E: login flow to dashboard, cases create/edit flow, admin controls flow, and assistant ask/sources flow
 
 ## Next frontend increments
 

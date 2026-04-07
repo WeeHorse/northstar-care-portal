@@ -39,4 +39,31 @@ describe("Documents API", () => {
     expect(fetched.status).toBe(200);
     expect(fetched.body.id).toBe(created.body.id);
   });
+
+  it("searches and classifies documents", async () => {
+    const { app } = createTestContext();
+    const adminToken = await login(app, "adam.admin");
+
+    const created = await request(app)
+      .post("/api/documents")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ title: "Network Guide", description: "Contains vpn tag", category: "network", tags: ["vpn", "ops"] });
+
+    expect(created.status).toBe(201);
+
+    const searched = await request(app)
+      .get("/api/documents/search?title=Network&tag=vpn&category=network")
+      .set("Authorization", `Bearer ${adminToken}`);
+
+    expect(searched.status).toBe(200);
+    expect(searched.body.total).toBeGreaterThan(0);
+
+    const classified = await request(app)
+      .patch(`/api/documents/${created.body.id}/classification`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ classification: "Restricted" });
+
+    expect(classified.status).toBe(200);
+    expect(classified.body.classification).toBe("Restricted");
+  });
 });

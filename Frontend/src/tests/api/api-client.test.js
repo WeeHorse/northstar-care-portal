@@ -71,4 +71,47 @@ describe("api client", () => {
     await api.listCases("token");
     expect(seenUrl.startsWith("/api/")).toBe(true);
   });
+
+  it("builds document search and classification calls", async () => {
+    const calls = [];
+    vi.spyOn(global, "fetch").mockImplementation(async (url, options = {}) => {
+      calls.push({ url: String(url), method: options.method || "GET" });
+      return {
+        ok: true,
+        json: async () => ({ items: [], total: 0 })
+      };
+    });
+
+    await api.searchDocuments("token", { title: "Policy", tag: "security", category: "governance" });
+    await api.classifyDocument("token", 4, "Restricted");
+
+    expect(calls[0].url).toContain("/api/documents/search?");
+    expect(calls[0].url).toContain("title=Policy");
+    expect(calls[0].url).toContain("tag=security");
+    expect(calls[0].url).toContain("category=governance");
+    expect(calls[1].method).toBe("PATCH");
+    expect(calls[1].url).toContain("/api/documents/4/classification");
+  });
+
+  it("calls assistant endpoints", async () => {
+    const calls = [];
+    vi.spyOn(global, "fetch").mockImplementation(async (url, options = {}) => {
+      calls.push({ url: String(url), method: options.method || "GET" });
+      return {
+        ok: true,
+        json: async () => ({ items: [], total: 0, mode: "disabled", answerId: "ans-1", sources: [] })
+      };
+    });
+
+    await api.askAssistant("token", "How do we triage?");
+    await api.getAssistantSources("token", "ans-1");
+    await api.getAssistantRoleAwareMode("token");
+    await api.setAssistantRoleAwareMode("token", "enabled");
+    await api.listAssistantMismatches("token");
+
+    expect(calls.some((call) => call.url.includes("/api/assistant/ask") && call.method === "POST")).toBe(true);
+    expect(calls.some((call) => call.url.includes("/api/assistant/sources/ans-1"))).toBe(true);
+    expect(calls.some((call) => call.url.includes("/api/assistant/settings/role-aware-mode") && call.method === "PATCH")).toBe(true);
+    expect(calls.some((call) => call.url.includes("/api/assistant/mismatches"))).toBe(true);
+  });
 });

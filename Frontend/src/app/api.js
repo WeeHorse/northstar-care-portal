@@ -26,11 +26,34 @@ export const api = {
   createCase: (token, payload) => request("/api/cases", { method: "POST", token, body: payload }),
   updateCase: (token, id, payload) => request(`/api/cases/${id}`, { method: "PATCH", token, body: payload }),
   listRecords: (token) => request("/api/records", { token }),
-  listDocuments: (token) => request("/api/documents", { token }),
+  listDocuments: (token, filters = {}) => {
+    const query = new URLSearchParams();
+    if (filters.title) query.set("title", filters.title);
+    if (filters.tag) query.set("tag", filters.tag);
+    if (filters.category) query.set("category", filters.category);
+    const suffix = query.toString() ? `?${query.toString()}` : "";
+    return request(`/api/documents${suffix}`, { token });
+  },
+  searchDocuments: (token, filters = {}) => {
+    const query = new URLSearchParams();
+    if (filters.title) query.set("title", filters.title);
+    if (filters.tag) query.set("tag", filters.tag);
+    if (filters.category) query.set("category", filters.category);
+    const suffix = query.toString() ? `?${query.toString()}` : "";
+    return request(`/api/documents/search${suffix}`, { token });
+  },
+  classifyDocument: (token, id, classification) =>
+    request(`/api/documents/${id}/classification`, { method: "PATCH", token, body: { classification } }),
   listProcedures: (token) => request("/api/procedures", { token }),
   listMeetings: (token) => request("/api/meetings", { token }),
   createMeeting: (token, payload) => request("/api/meetings", { method: "POST", token, body: payload }),
   updateMeeting: (token, id, payload) => request(`/api/meetings/${id}`, { method: "PATCH", token, body: payload }),
+  askAssistant: (token, question) => request("/api/assistant/ask", { method: "POST", token, body: { question } }),
+  getAssistantSources: (token, answerId) => request(`/api/assistant/sources/${answerId}`, { token }),
+  getAssistantRoleAwareMode: (token) => request("/api/assistant/settings/role-aware-mode", { token }),
+  setAssistantRoleAwareMode: (token, mode) =>
+    request("/api/assistant/settings/role-aware-mode", { method: "PATCH", token, body: { mode } }),
+  listAssistantMismatches: (token) => request("/api/assistant/mismatches", { token }),
   listAdminUsers: (token) => request("/api/admin/users", { token }),
   changeUserRole: (token, id, role) =>
     request(`/api/admin/users/${id}/role`, { method: "PATCH", token, body: { role } }),

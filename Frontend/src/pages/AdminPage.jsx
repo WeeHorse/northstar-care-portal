@@ -11,17 +11,23 @@ export function AdminPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({ eventType: "", result: "" });
+  const [assistantMode, setAssistantMode] = useState("disabled");
+  const [assistantMismatches, setAssistantMismatches] = useState([]);
 
   async function loadAdminData(activeFilters = filters) {
     setLoading(true);
-    const [u, a, m] = await Promise.all([
+    const [u, a, m, am, mm] = await Promise.all([
       api.listAdminUsers(token),
       api.listAuditLogs(token, activeFilters),
-      api.getSecurityMode(token)
+      api.getSecurityMode(token),
+      api.getAssistantRoleAwareMode(token),
+      api.listAssistantMismatches(token)
     ]);
     setUsers(u.items || []);
     setAudit(a.items || []);
     setMode(m.mode || "secure");
+    setAssistantMode(am.mode || "disabled");
+    setAssistantMismatches(mm.items || []);
     setLoading(false);
   }
 
@@ -69,6 +75,17 @@ export function AdminPage() {
     }
   }
 
+  async function toggleAssistantMode() {
+    setError("");
+    try {
+      const next = assistantMode === "enabled" ? "disabled" : "enabled";
+      const response = await api.setAssistantRoleAwareMode(token, next);
+      setAssistantMode(response.mode || next);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   if (loading) {
     return <section className="card skeleton-card"><div className="skeleton-row" /><div className="skeleton-row short" /></section>;
   }
@@ -83,6 +100,12 @@ export function AdminPage() {
         <h2>Security Mode</h2>
         <p>Current mode: {mode}</p>
         <button onClick={toggleMode}>Toggle Mode</button>
+      </section>
+
+      <section className="card">
+        <h2>Assistant Guard Mode</h2>
+        <p>Current mode: {assistantMode}</p>
+        <button onClick={toggleAssistantMode}>Toggle Assistant Mode</button>
       </section>
       <section className="card">
         <h2>Role Assignment</h2>
@@ -118,6 +141,17 @@ export function AdminPage() {
       </form>
 
       <ResourceTable title="Audit Logs" items={audit} columns={[{ key: "id", label: "ID" }, { key: "eventType", label: "Event" }, { key: "result", label: "Result" }, { key: "createdAt", label: "Created" }]} />
+
+      <ResourceTable
+        title="Assistant Permission Mismatch Events"
+        items={assistantMismatches}
+        columns={[
+          { key: "id", label: "ID" },
+          { key: "eventType", label: "Event" },
+          { key: "result", label: "Result" },
+          { key: "createdAt", label: "Created" }
+        ]}
+      />
     </div>
   );
 }

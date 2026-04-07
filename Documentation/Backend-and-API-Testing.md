@@ -20,8 +20,10 @@ Backend MVP baseline is implemented in [Backend/server](../Backend/server) with:
   - GET /api/records/:id
 - Documents endpoints:
   - GET /api/documents
+  - GET /api/documents/search
   - POST /api/documents
   - GET /api/documents/:id
+  - PATCH /api/documents/:id/classification
 - Procedures endpoints:
   - GET /api/procedures
   - GET /api/procedures/:id
@@ -36,6 +38,12 @@ Backend MVP baseline is implemented in [Backend/server](../Backend/server) with:
   - GET /api/admin/audit
   - GET /api/admin/settings/security-mode
   - PATCH /api/admin/settings/security-mode
+- Assistant endpoints:
+  - POST /api/assistant/ask
+  - GET /api/assistant/sources/:answerId
+  - GET /api/assistant/mismatches (admin)
+  - GET /api/assistant/settings/role-aware-mode (admin)
+  - PATCH /api/assistant/settings/role-aware-mode (admin)
 - JWT-based API authorization middleware
 - Basic RBAC behavior for SupportAgent scope in case reads/list
 - Role-aware record and document responses
@@ -75,10 +83,13 @@ npm test
 
 ## Current passing suites
 
-- Unit: cases, documents, procedures, meetings, and admin service behavior
-- API: auth, cases, records, documents, procedures, meetings, and admin/audit flows
-- E2E: auth -> cases flow, auth -> documents -> records flow, auth -> procedures -> meetings flow, and auth -> admin -> audit flow
+- Unit: cases, documents, procedures, meetings, admin, and assistant service behavior
+- API: auth, cases, records, documents (including search/classification), procedures, meetings, assistant, and admin/audit flows
+- E2E: auth -> cases flow, auth -> documents -> records flow, auth -> procedures -> meetings flow, auth -> admin -> audit flow, and auth -> assistant flow
 - API regression: frontend static asset serving and SPA fallback routing
+
+Cross-reference:
+- Full user-story implementation status is maintained in [Documentation/User-Story-Coverage.md](./User-Story-Coverage.md).
 
 ## Next backend increments
 

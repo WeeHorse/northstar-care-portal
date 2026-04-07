@@ -174,4 +174,19 @@ export function initDb(db) {
       nowIso()
     );
   }
+
+  const assistantMode = db.prepare("SELECT value FROM system_settings WHERE key = 'assistant_role_aware_mode'").get();
+  if (!assistantMode) {
+    db.prepare("INSERT INTO system_settings (key, value, updated_at) VALUES (?, ?, ?)").run(
+      "assistant_role_aware_mode",
+      "disabled",
+      nowIso()
+    );
+  }
+
+  const documentColumns = db.prepare("PRAGMA table_info(documents)").all();
+  const hasTagsColumn = documentColumns.some((column) => column.name === "tags");
+  if (!hasTagsColumn) {
+    db.exec("ALTER TABLE documents ADD COLUMN tags TEXT");
+  }
 }
