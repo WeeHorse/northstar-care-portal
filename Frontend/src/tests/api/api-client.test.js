@@ -57,4 +57,18 @@ describe("api client", () => {
     expect(seenUrl).toContain("eventType=login_attempt");
     expect(seenUrl).toContain("result=success");
   });
+
+  it("uses same-origin API path by default", async () => {
+    let seenUrl = "";
+    vi.spyOn(global, "fetch").mockImplementation(async (url) => {
+      seenUrl = String(url);
+      return {
+        ok: true,
+        json: async () => ({ items: [], total: 0 })
+      };
+    });
+
+    await api.listCases("token");
+    expect(seenUrl.startsWith("/api/")).toBe(true);
+  });
 });

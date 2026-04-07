@@ -40,6 +40,21 @@ npm install
 npm run dev
 ```
 
+Frontend dev server runs on port 5173 by default and proxies `/api` and `/health` to `http://localhost:3001`, so CORS is avoided during local development.
+
+Optional environment variable:
+- `VITE_API_BASE_URL` (default: empty, same-origin)
+
+## Build frontend for backend serving
+
+From [Frontend](Frontend):
+
+```bash
+npm run build
+```
+
+The frontend build now outputs to [Backend/wwwroot](Backend/wwwroot). When `index.html` exists in that directory, the backend serves static assets and supports SPA route fallback.
+
 ## Frontend test commands
 
 From [Frontend](Frontend):
@@ -73,7 +88,7 @@ npm install
 npm run dev
 ```
 
-Frontend runs on port 5173 by default and connects to http://localhost:3001 unless you set VITE_API_BASE_URL.
+Frontend runs on port 5173 by default and proxies API calls to backend port 3001.
 
 ### 3. Open the app
 

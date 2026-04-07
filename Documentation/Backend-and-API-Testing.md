@@ -4,6 +4,7 @@
 
 Backend MVP baseline is implemented in [Backend/server](../Backend/server) with:
 - Express server bootstrap
+- Static frontend hosting from `wwwroot` (when built assets exist)
 - SQLite database initialization and seed data
 - Auth endpoints:
   - POST /api/auth/login
@@ -77,6 +78,7 @@ npm test
 - Unit: cases, documents, procedures, meetings, and admin service behavior
 - API: auth, cases, records, documents, procedures, meetings, and admin/audit flows
 - E2E: auth -> cases flow, auth -> documents -> records flow, auth -> procedures -> meetings flow, and auth -> admin -> audit flow
+- API regression: frontend static asset serving and SPA fallback routing
 
 ## Next backend increments
 

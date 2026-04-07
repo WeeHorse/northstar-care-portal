@@ -31,7 +31,15 @@ npm run dev
 ```
 
 Optional environment variable:
-- VITE_API_BASE_URL (default: http://localhost:3001)
+- VITE_API_BASE_URL (default: empty, same-origin)
+
+Local development defaults:
+- Vite runs on port 5173
+- `/api` and `/health` are proxied to `http://localhost:3001` to avoid CORS issues
+
+Production-style build output:
+- `npm run build` writes static files to `../Backend/wwwroot`
+- Backend serves `wwwroot` when `index.html` exists, including SPA fallback for client-side routes
 
 ## Test strategy implemented
 

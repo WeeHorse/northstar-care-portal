@@ -1,4 +1,7 @@
 import express from "express";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { createAuthMiddleware } from "./middleware/auth.js";
 import { errorHandler } from "./middleware/errorHandler.js";
@@ -32,7 +35,10 @@ import { createProceduresRouter } from "./routes/procedures.routes.js";
 import { createMeetingsRouter } from "./routes/meetings.routes.js";
 import { createAdminRouter } from "./routes/admin.routes.js";
 
-export function createApp({ db, jwtSecret }) {
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const DEFAULT_WWWROOT = path.resolve(__dirname, "../wwwroot");
+
+export function createApp({ db, jwtSecret, staticRoot = DEFAULT_WWWROOT }) {
   const app = express();
   app.use(express.json());
 
@@ -71,6 +77,18 @@ export function createApp({ db, jwtSecret }) {
   app.use("/api/procedures", createProceduresRouter({ proceduresController, authMiddleware }));
   app.use("/api/meetings", createMeetingsRouter({ meetingsController, authMiddleware }));
   app.use("/api/admin", createAdminRouter({ adminController, authMiddleware }));
+
+  const indexPath = path.join(staticRoot, "index.html");
+  if (fs.existsSync(indexPath)) {
+    app.use(express.static(staticRoot));
+    app.get("*", (req, res, next) => {
+      if (req.path.startsWith("/api")) {
+        next();
+        return;
+      }
+      res.sendFile(indexPath);
+    });
+  }
 
   app.use(errorHandler);
   return app;
