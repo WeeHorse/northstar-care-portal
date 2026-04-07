@@ -84,6 +84,39 @@ export function createMeetingsService({ meetingsRepository, auditRepository }) {
         createdAt: created.created_at,
         updatedAt: created.updated_at
       };
+    },
+    updateMeeting({ id, payload, user }) {
+      const existing = meetingsRepository.findById(id);
+      if (!existing) {
+        return null;
+      }
+      if (!canAccessMeeting(user, existing)) {
+        return { denied: true };
+      }
+
+      const updated = meetingsRepository.update(id, payload);
+
+      auditRepository.write({
+        actorUserId: user.id,
+        eventType: "meeting_update",
+        entityType: "meeting",
+        entityId: String(id),
+        result: "success"
+      });
+
+      return {
+        id: updated.id,
+        title: updated.title,
+        description: updated.description,
+        meetingType: updated.meeting_type,
+        startAt: updated.start_at,
+        endAt: updated.end_at,
+        teamsLink: updated.teams_link,
+        team: updated.team,
+        createdByUserId: updated.created_by_user_id,
+        createdAt: updated.created_at,
+        updatedAt: updated.updated_at
+      };
     }
   };
 }

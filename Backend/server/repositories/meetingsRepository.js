@@ -52,6 +52,40 @@ export function createMeetingsRepository(db) {
           now
         );
       return this.findById(result.lastInsertRowid);
+    },
+    update(id, payload) {
+      const current = this.findById(id);
+      if (!current) {
+        return null;
+      }
+
+      const next = {
+        title: payload.title ?? current.title,
+        description: payload.description ?? current.description,
+        meeting_type: payload.meetingType ?? current.meeting_type,
+        start_at: payload.startAt ?? current.start_at,
+        end_at: payload.endAt ?? current.end_at,
+        teams_link: payload.teamsLink ?? current.teams_link,
+        team: payload.team ?? current.team
+      };
+
+      db.prepare(
+        `UPDATE meetings
+         SET title = ?, description = ?, meeting_type = ?, start_at = ?, end_at = ?, teams_link = ?, team = ?, updated_at = ?
+         WHERE id = ?`
+      ).run(
+        next.title,
+        next.description,
+        next.meeting_type,
+        next.start_at,
+        next.end_at,
+        next.teams_link,
+        next.team,
+        new Date().toISOString(),
+        id
+      );
+
+      return this.findById(id);
     }
   };
 }

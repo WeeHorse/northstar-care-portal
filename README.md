@@ -6,8 +6,10 @@ Project scaffold for the Northstar Care Portal simulation.
 
 - Specifications are documented in [Specifications/Northstar Care Portal.md](Specifications/Northstar%20Care%20Portal.md).
 - Interaction YAML catalog is documented in [Specifications/Northstar Care Portal Interactions.md](Specifications/Northstar%20Care%20Portal%20Interactions.md).
-- Backend MVP baseline is implemented in [Backend](Backend) with auth, cases, records, documents, procedures, and meetings APIs.
+- Backend MVP baseline is implemented in [Backend](Backend) with auth, cases, records, documents, procedures, meetings, and admin/audit APIs.
 - Backend and test details are documented in [Documentation/Backend-and-API-Testing.md](Documentation/Backend-and-API-Testing.md).
+- Frontend MVP baseline is implemented in [Frontend](Frontend) with authenticated routes, create/edit forms for cases and meetings, and admin controls.
+- Frontend and test details are documented in [Documentation/Frontend-and-Testing.md](Documentation/Frontend-and-Testing.md).
 
 ## Backend quick start
 
@@ -28,6 +30,114 @@ npm run test:api
 npm run test:e2e
 npm test
 ```
+
+## Frontend quick start
+
+From [Frontend](Frontend):
+
+```bash
+npm install
+npm run dev
+```
+
+## Frontend test commands
+
+From [Frontend](Frontend):
+
+```bash
+npm run test:unit
+npm run test:api
+npm run test:e2e
+npm test
+```
+
+## Demo runbook
+
+### 1. Start backend
+
+From [Backend](Backend):
+
+```bash
+npm install
+npm run dev
+```
+
+Backend runs on port 3001 by default.
+
+### 2. Start frontend
+
+From [Frontend](Frontend):
+
+```bash
+npm install
+npm run dev
+```
+
+Frontend runs on port 5173 by default and connects to http://localhost:3001 unless you set VITE_API_BASE_URL.
+
+### 3. Open the app
+
+Open the local Vite URL shown in terminal (typically http://localhost:5173) and sign in with one of the demo users below.
+
+## Seeded demo data
+
+Yes, the database is auto-seeded when backend starts and tables are empty.
+
+Seeded entities include:
+- 5 roles: SupportAgent, Manager, Clinician, Admin, ExternalConsultant
+- 4 users
+- 2 cases
+- 2 records
+- 2 documents with role-based permissions
+- 2 procedures
+- 2 meetings
+- 1 system setting: security_mode=secure
+
+Demo credentials (all use password: secret):
+- anna.support (SupportAgent)
+- mikael.manager (Manager)
+- clara.clinician (Clinician)
+- adam.admin (Admin)
+
+## Demo script by role
+
+Use this as a quick presenter flow.
+
+### SupportAgent flow (anna.support)
+
+1. Log in and open Dashboard to show scope counters.
+2. Go to Cases and create a new case with title + description.
+3. Edit the case status/priority to show optimistic UI updates.
+4. Open Records and note that support role sees restricted metadata.
+5. Open Meetings and create a meeting entry.
+
+### Clinician flow (clara.clinician)
+
+1. Log in and open Records.
+2. Show that clinician role can view richer record detail than support.
+3. Open Procedures and show clinical/internal procedure visibility.
+
+### Admin flow (adam.admin)
+
+1. Log in and open Admin.
+2. Toggle security mode (secure <-> misconfigured).
+3. Change a user role from the role assignment controls.
+4. Apply audit filters (eventType/result) and show security-relevant events.
+
+### Manager flow (optional, mikael.manager)
+
+1. Log in and review team-level pages (Cases/Meetings).
+2. Compare visibility against SupportAgent to explain RBAC differences.
+
+## Reseed from scratch
+
+If you want to reset to a fresh demo dataset:
+
+1. Stop backend.
+2. Delete the local SQLite database file created in [Backend](Backend) (named northstar.db) if it exists.
+3. Start backend again with npm run dev.
+
+This recreates schema and seed data on startup.
 
 Current specification status:
 - Product, scope, roles, user stories, architecture, data model, API contracts, and MVP roadmap are documented in [Specifications/Northstar Care Portal.md](Specifications/Northstar%20Care%20Portal.md).

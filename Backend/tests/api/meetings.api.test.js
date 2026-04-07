@@ -42,5 +42,13 @@ describe("Meetings API", () => {
 
     expect(detail.status).toBe(200);
     expect(detail.body.title).toBe("API Meeting");
+
+    const updated = await request(app)
+      .patch(`/api/meetings/${created.body.id}`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ title: "API Meeting Updated" });
+
+    expect(updated.status).toBe(200);
+    expect(updated.body.title).toBe("API Meeting Updated");
   });
 });

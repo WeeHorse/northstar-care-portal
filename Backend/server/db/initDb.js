@@ -165,4 +165,13 @@ export function initDb(db) {
       t
     );
   }
+
+  const settingsCount = db.prepare("SELECT COUNT(*) AS count FROM system_settings").get().count;
+  if (settingsCount === 0) {
+    db.prepare("INSERT INTO system_settings (key, value, updated_at) VALUES (?, ?, ?)").run(
+      "security_mode",
+      "secure",
+      nowIso()
+    );
+  }
 }

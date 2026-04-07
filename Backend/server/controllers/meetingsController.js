@@ -21,6 +21,22 @@ export function createMeetingsController(meetingsService) {
       }
       const created = meetingsService.createMeeting({ payload: req.body, user: req.user });
       return res.status(201).json(created);
+    },
+    update(req, res) {
+      const updated = meetingsService.updateMeeting({
+        id: Number(req.params.id),
+        payload: req.body || {},
+        user: req.user
+      });
+
+      if (!updated) {
+        return res.status(404).json({ error: "Meeting not found" });
+      }
+      if (updated.denied) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      return res.status(200).json(updated);
     }
   };
 }
