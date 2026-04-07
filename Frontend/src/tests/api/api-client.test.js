@@ -114,4 +114,23 @@ describe("api client", () => {
     expect(calls.some((call) => call.url.includes("/api/assistant/settings/role-aware-mode") && call.method === "PATCH")).toBe(true);
     expect(calls.some((call) => call.url.includes("/api/assistant/mismatches"))).toBe(true);
   });
+
+  it("calls logout, getCase and meeting filters", async () => {
+    const calls = [];
+    vi.spyOn(global, "fetch").mockImplementation(async (url, options = {}) => {
+      calls.push({ url: String(url), method: options.method || "GET" });
+      return {
+        ok: true,
+        json: async () => ({ items: [], total: 0 })
+      };
+    });
+
+    await api.logout("token");
+    await api.getCase("token", 7);
+    await api.listMeetings("token", { team: "support", day: "2026-04-08" });
+
+    expect(calls.some((call) => call.url.includes("/api/auth/logout") && call.method === "POST")).toBe(true);
+    expect(calls.some((call) => call.url.includes("/api/cases/7") && call.method === "GET")).toBe(true);
+    expect(calls.some((call) => call.url.includes("/api/meetings?team=support&day=2026-04-08"))).toBe(true);
+  });
 });

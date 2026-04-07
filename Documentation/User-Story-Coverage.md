@@ -12,12 +12,12 @@ Legend:
 | User Story | Graph | Implementation | Notes |
 |---|---|---|---|
 | US-01 Logga in | Created | Implemented | Login endpoint and UI flow are present and tested. |
-| US-02 Behalla session | Created | Partial | Session persists in local storage, but token refresh/expiry handling is limited. |
-| US-03 Logga ut | Created | Partial | Frontend clears local session; backend logout is stateless and does not revoke tokens. |
+| US-02 Behalla session | Created | Implemented | Session restore now validates persisted tokens via /api/auth/me and keeps valid users signed in across reloads. |
+| US-03 Logga ut | Created | Implemented | Logout now clears client session and revokes JWT jti server-side to block reused tokens. |
 | US-04 Se oversikt | Created | Implemented | Dashboard counters for cases, records, documents, meetings are implemented. |
 | US-05 Chefsvy dashboard | Created | Partial | Manager uses same dashboard shell; dedicated manager analytics are limited. |
 | US-06 Lista arenden | Created | Implemented | Case listing with status/priority filters and role-aware scope exists. |
-| US-07 Arendedetalj | Created | Partial | Backend detail endpoint exists; frontend lacks a dedicated case detail page. |
+| US-07 Arendedetalj | Created | Implemented | Dedicated frontend case detail page is routed and backed by case detail API reads. |
 | US-08 Uppdatera arende | Created | Partial | Status/priority/title updates exist; richer history/comments flow is limited. |
 | US-09 Skapa arende | Created | Implemented | Create case flow is implemented in UI and API with tests. |
 | US-10 Chefens teamfilter | Created | Partial | Team scoping exists in backend model but limited explicit manager filter UX. |
@@ -32,7 +32,7 @@ Legend:
 | US-19 Begransad dokumentatkomst | Created | Implemented | External role visibility is constrained by document permissions. |
 | US-20 Visa bokningar | Created | Implemented | Meeting list by user scope exists in frontend and backend. |
 | US-21 Skapa bokning | Created | Implemented | Meeting create flow is implemented in UI and API with tests. |
-| US-22 Filtrera bokningar | Created | Partial | Team filtering exists; day-specific filtering is limited. |
+| US-22 Filtrera bokningar | Created | Implemented | Meetings filtering now supports both team and day in API and UI. |
 | US-23 Fraga assistenten | Created | Implemented | Assistant ask endpoint and frontend page are implemented. |
 | US-24 Visa kallor | Created | Implemented | Assistant source retrieval endpoint and UI rendering are implemented. |
 | US-25 Riskflagga | Created | Implemented | Permission mismatch flags are produced and surfaced to admin. |
@@ -45,7 +45,7 @@ Legend:
 ## Stories still not fully complete
 
 Partial:
-- US-02, US-03, US-05, US-07, US-08, US-10, US-11, US-13, US-15, US-22, US-28
+- US-05, US-08, US-10, US-11, US-13, US-15, US-28
 
 Missing:
 - None

@@ -7,9 +7,11 @@ Project scaffold for the Northstar Care Portal simulation.
 - Specifications are documented in [Specifications/Northstar Care Portal.md](Specifications/Northstar%20Care%20Portal.md).
 - Interaction YAML catalog is documented in [Specifications/Northstar Care Portal Interactions.md](Specifications/Northstar%20Care%20Portal%20Interactions.md).
 - Backend MVP baseline is implemented in [Backend](Backend) with auth, cases, records, documents, procedures, meetings, and admin/audit APIs.
+- Auth logout now revokes issued JWT tokens and middleware rejects revoked tokens.
 - Backend and test details are documented in [Documentation/Backend-and-API-Testing.md](Documentation/Backend-and-API-Testing.md).
 - Frontend MVP baseline is implemented in [Frontend](Frontend) with authenticated routes, create/edit forms for cases and meetings, and admin controls.
-- Frontend now also includes Assistant flows, document search, and admin document classification controls.
+- Frontend now also includes Assistant flows, document search, admin document classification controls, case detail route views, and meetings day/team filters.
+- Meetings create/edit forms use native date-time pickers, and meeting list timestamps are shown in local date-time format.
 - Frontend and test details are documented in [Documentation/Frontend-and-Testing.md](Documentation/Frontend-and-Testing.md).
 - Full user-story coverage matrix is documented in [Documentation/User-Story-Coverage.md](Documentation/User-Story-Coverage.md).
 
@@ -103,11 +105,12 @@ Yes, the database is auto-seeded when backend starts and tables are empty.
 Seeded entities include:
 - 5 roles: SupportAgent, Manager, Clinician, Admin, ExternalConsultant
 - 4 users
-- 2 cases
-- 2 records
-- 2 documents with role-based permissions
-- 2 procedures
-- 2 meetings
+- 36 cases
+- 36 case comments
+- 36 records
+- 36 documents with role-based permissions
+- 36 procedures
+- 36 meetings
 - 1 system setting: security_mode=secure
 
 Demo credentials (all use password: secret):
@@ -124,11 +127,12 @@ Use this as a quick presenter flow.
 
 1. Log in and open Dashboard to show scope counters.
 2. Go to Cases and create a new case with title + description.
-3. Edit the case status/priority to show optimistic UI updates.
-4. Open Documents and run a search with title/tag/category filters.
-5. Open Records and note that support role sees restricted metadata.
-6. Open Meetings and create a meeting entry.
-7. Open Assistant and ask an operations question, then inspect source list.
+3. Open the case detail route from the case list to show detailed read behavior.
+4. Edit the case status/priority to show optimistic UI updates.
+5. Open Documents and run a search with title/tag/category filters.
+6. Open Records and note that support role sees restricted metadata.
+7. Open Meetings, create a meeting entry, then apply day/team filters.
+8. Open Assistant and ask an operations question, then inspect source list.
 
 ### Clinician flow (clara.clinician)
 

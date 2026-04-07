@@ -26,7 +26,12 @@ export function createAuthController(authService) {
       });
     },
     logout(req, res) {
-      return res.status(200).json({ message: "Logged out" });
+      const result = authService.logout({
+        tokenJti: req.auth?.jti,
+        tokenExp: req.auth?.exp,
+        userId: req.user?.id
+      });
+      return res.status(200).json(result);
     }
   };
 }

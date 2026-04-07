@@ -45,10 +45,10 @@ export function createApp({ db, jwtSecret, staticRoot = DEFAULT_WWWROOT }) {
   const app = express();
   app.use(express.json());
 
-  const authMiddleware = createAuthMiddleware(jwtSecret);
+  const authRepository = createAuthRepository(db);
+  const authMiddleware = createAuthMiddleware({ jwtSecret, authRepository });
 
   const auditRepository = createAuditRepository(db);
-  const authRepository = createAuthRepository(db);
   const casesRepository = createCasesRepository(db);
   const recordsRepository = createRecordsRepository(db);
   const documentsRepository = createDocumentsRepository(db);

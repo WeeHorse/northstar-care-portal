@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs";
+import { randomUUID } from "node:crypto";
 import jwt from "jsonwebtoken";
 
 export function createAuthService({ authRepository, auditRepository, jwtSecret }) {
@@ -17,7 +18,7 @@ export function createAuthService({ authRepository, auditRepository, jwtSecret }
         return null;
       }
 
-      const token = jwt.sign({ sub: user.id, role: user.role }, jwtSecret, { expiresIn: "8h" });
+      const token = jwt.sign({ sub: user.id, role: user.role, jti: randomUUID() }, jwtSecret, { expiresIn: "8h" });
       auditRepository.write({
         actorUserId: user.id,
         eventType: "login_attempt",
@@ -37,6 +38,20 @@ export function createAuthService({ authRepository, auditRepository, jwtSecret }
         }
       };
     },
-    me: (userId) => authRepository.findUserById(userId)
+    me: (userId) => authRepository.findUserById(userId),
+    logout: ({ tokenJti, tokenExp, userId }) => {
+      if (tokenJti) {
+        authRepository.revokeToken({ jti: tokenJti, expiresAt: tokenExp || 0 });
+      }
+      authRepository.pruneExpiredRevokedTokens(Math.floor(Date.now() / 1000));
+      auditRepository.write({
+        actorUserId: userId,
+        eventType: "logout",
+        entityType: "auth",
+        entityId: String(userId),
+        result: "success"
+      });
+      return { message: "Logged out" };
+    }
   };
 }

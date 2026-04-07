@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { api } from "../app/api";
 import { useAuth } from "../app/auth";
 import { ResourceTable } from "../components/ResourceTable";
@@ -134,6 +135,17 @@ export function CasesPage() {
             <button key={item.id} className="ghost" onClick={() => startEdit(item)}>
               Edit #{item.id}
             </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="card">
+        <h3>Case Details</h3>
+        <div className="chip-list">
+          {items.map((item) => (
+            <Link key={`view-${item.id}`} className="ghost" to={`/cases/${item.id}`}>
+              View #{item.id}
+            </Link>
           ))}
         </div>
       </section>

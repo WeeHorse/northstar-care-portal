@@ -45,11 +45,12 @@ Backend MVP baseline is implemented in [Backend/server](../Backend/server) with:
   - GET /api/assistant/settings/role-aware-mode (admin)
   - PATCH /api/assistant/settings/role-aware-mode (admin)
 - JWT-based API authorization middleware
+- Logout token revocation using JWT jti plus revoked-token checks in auth middleware
 - Basic RBAC behavior for SupportAgent scope in case reads/list
 - Role-aware record and document responses
 - Role-aware procedure and meeting responses
 - Admin-only role guard for admin and audit reads
-- Audit logging for login and domain read/write events
+- Audit logging for login/logout and domain read/write events, including denied case/meeting access paths
 
 ## Run backend locally
 
@@ -64,6 +65,9 @@ Default runtime values:
 - PORT: 3001
 - DB_PATH: ./northstar.db
 - JWT_SECRET: northstar-dev-secret
+
+Seeding behavior:
+- On an empty database, backend bootstrap now seeds a richer demo dataset (about 36 rows each for cases, case comments, records, documents, procedures, and meetings; users remain 4 seeded demo accounts).
 
 ## Test strategy implemented
 
@@ -84,7 +88,7 @@ npm test
 ## Current passing suites
 
 - Unit: cases, documents, procedures, meetings, admin, and assistant service behavior
-- API: auth, cases, records, documents (including search/classification), procedures, meetings, assistant, and admin/audit flows
+- API: auth (including logout invalidation), cases, records, documents (including search/classification), procedures, meetings (including day filtering), assistant, and admin/audit flows
 - E2E: auth -> cases flow, auth -> documents -> records flow, auth -> procedures -> meetings flow, auth -> admin -> audit flow, and auth -> assistant flow
 - API regression: frontend static asset serving and SPA fallback routing
 

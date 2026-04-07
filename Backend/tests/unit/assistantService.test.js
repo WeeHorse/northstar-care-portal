@@ -32,7 +32,7 @@ describe("assistantService", () => {
         }
       },
       auditRepository: {
-        write() {},
+        write() { },
         list() {
           return [];
         }
@@ -71,7 +71,7 @@ describe("assistantService", () => {
         }
       },
       auditRepository: {
-        write() {},
+        write() { },
         list() {
           return [];
         }

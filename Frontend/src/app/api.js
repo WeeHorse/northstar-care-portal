@@ -22,7 +22,9 @@ async function request(path, { method = "GET", token, body } = {}) {
 export const api = {
   login: (username, password) => request("/api/auth/login", { method: "POST", body: { username, password } }),
   me: (token) => request("/api/auth/me", { token }),
+  logout: (token) => request("/api/auth/logout", { method: "POST", token }),
   listCases: (token) => request("/api/cases", { token }),
+  getCase: (token, id) => request(`/api/cases/${id}`, { token }),
   createCase: (token, payload) => request("/api/cases", { method: "POST", token, body: payload }),
   updateCase: (token, id, payload) => request(`/api/cases/${id}`, { method: "PATCH", token, body: payload }),
   listRecords: (token) => request("/api/records", { token }),
@@ -45,7 +47,13 @@ export const api = {
   classifyDocument: (token, id, classification) =>
     request(`/api/documents/${id}/classification`, { method: "PATCH", token, body: { classification } }),
   listProcedures: (token) => request("/api/procedures", { token }),
-  listMeetings: (token) => request("/api/meetings", { token }),
+  listMeetings: (token, filters = {}) => {
+    const query = new URLSearchParams();
+    if (filters.team) query.set("team", filters.team);
+    if (filters.day) query.set("day", filters.day);
+    const suffix = query.toString() ? `?${query.toString()}` : "";
+    return request(`/api/meetings${suffix}`, { token });
+  },
   createMeeting: (token, payload) => request("/api/meetings", { method: "POST", token, body: payload }),
   updateMeeting: (token, id, payload) => request(`/api/meetings/${id}`, { method: "PATCH", token, body: payload }),
   askAssistant: (token, question) => request("/api/assistant/ask", { method: "POST", token, body: { question } }),

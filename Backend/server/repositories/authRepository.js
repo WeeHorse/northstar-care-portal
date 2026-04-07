@@ -19,6 +19,19 @@ export function createAuthRepository(db) {
            WHERE u.id = ? AND u.is_active = 1`
         )
         .get(id);
+    },
+    revokeToken({ jti, expiresAt }) {
+      db.prepare(
+        `INSERT OR REPLACE INTO revoked_tokens (jti, expires_at, created_at)
+         VALUES (?, ?, ?)`
+      ).run(jti, expiresAt, new Date().toISOString());
+    },
+    isTokenRevoked(jti) {
+      const row = db.prepare("SELECT jti FROM revoked_tokens WHERE jti = ?").get(jti);
+      return Boolean(row);
+    },
+    pruneExpiredRevokedTokens(nowEpochSeconds) {
+      db.prepare("DELETE FROM revoked_tokens WHERE expires_at <= ?").run(nowEpochSeconds);
     }
   };
 }

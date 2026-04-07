@@ -9,6 +9,7 @@ import { RouteSkeleton } from "../components/RouteSkeleton";
 const LoginPage = lazy(() => import("../pages/LoginPage").then((m) => ({ default: m.LoginPage })));
 const DashboardPage = lazy(() => import("../pages/DashboardPage").then((m) => ({ default: m.DashboardPage })));
 const CasesPage = lazy(() => import("../pages/CasesPage").then((m) => ({ default: m.CasesPage })));
+const CaseDetailPage = lazy(() => import("../pages/CaseDetailPage").then((m) => ({ default: m.CaseDetailPage })));
 const RecordsPage = lazy(() => import("../pages/RecordsPage").then((m) => ({ default: m.RecordsPage })));
 const DocumentsPage = lazy(() => import("../pages/DocumentsPage").then((m) => ({ default: m.DocumentsPage })));
 const ProceduresPage = lazy(() => import("../pages/ProceduresPage").then((m) => ({ default: m.ProceduresPage })));
@@ -36,6 +37,7 @@ export function App() {
       <Route path="/login" element={<Suspense fallback={<RouteSkeleton />}><LoginPage /></Suspense>} />
       <Route path="/dashboard" element={<ProtectedLayout><DashboardPage /></ProtectedLayout>} />
       <Route path="/cases" element={<ProtectedLayout><CasesPage /></ProtectedLayout>} />
+      <Route path="/cases/:id" element={<ProtectedLayout><CaseDetailPage /></ProtectedLayout>} />
       <Route path="/records" element={<ProtectedLayout><RecordsPage /></ProtectedLayout>} />
       <Route path="/documents" element={<ProtectedLayout><DocumentsPage /></ProtectedLayout>} />
       <Route path="/procedures" element={<ProtectedLayout><ProceduresPage /></ProtectedLayout>} />

@@ -13,7 +13,7 @@ const navItems = [
 ];
 
 export function AppShell({ children }) {
-  const { user, clearSession } = useAuth();
+  const { user, logout } = useAuth();
 
   return (
     <div className="app-shell">
@@ -22,7 +22,7 @@ export function AppShell({ children }) {
         <p className="subtitle">Care Portal</p>
         <nav>
           {navItems.map((item) => (
-            <NavLink key={item.to} to={item.to} className={({ isActive }) => (isActive ? "active" : "") }>
+            <NavLink key={item.to} to={item.to} className={({ isActive }) => (isActive ? "active" : "")}>
               {item.label}
             </NavLink>
           ))}
@@ -30,7 +30,7 @@ export function AppShell({ children }) {
         <div className="sidebar-footer">
           <p>{user?.fullName || user?.username}</p>
           <p>{user?.role}</p>
-          <button onClick={clearSession}>Logout</button>
+          <button onClick={logout}>Logout</button>
         </div>
       </aside>
       <main className="content">{children}</main>

@@ -1,7 +1,7 @@
 export function createMeetingsController(meetingsService) {
   return {
     list(req, res) {
-      const items = meetingsService.listMeetings({ user: req.user, team: req.query.team });
+      const items = meetingsService.listMeetings({ user: req.user, team: req.query.team, day: req.query.day });
       return res.status(200).json({ items, total: items.length });
     },
     getById(req, res) {

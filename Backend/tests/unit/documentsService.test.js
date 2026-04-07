@@ -87,7 +87,7 @@ describe("documentsService", () => {
           };
         }
       },
-      auditRepository: { write() {} }
+      auditRepository: { write() { } }
     });
 
     const updated = service.classifyDocument({

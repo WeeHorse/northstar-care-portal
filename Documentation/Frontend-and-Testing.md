@@ -10,6 +10,7 @@ Frontend baseline is implemented in [Frontend](../Frontend) with:
   - /login
   - /dashboard
   - /cases
+  - /cases/:id
   - /records
   - /documents
   - /procedures
@@ -17,8 +18,11 @@ Frontend baseline is implemented in [Frontend](../Frontend) with:
   - /assistant
   - /admin
 - API client integration against backend REST APIs
-- Persistent session in localStorage
+- Persistent session in localStorage with restore validation via /api/auth/me
+- Logout flow that calls backend logout then clears local session
 - Create/edit forms for cases and meetings with optimistic UI updates
+- Dedicated case detail page bound to case detail API reads
+- Meetings filtering by team and day
 - Admin role-assignment controls and audit filter controls
 - Document search (title/tag/category) and admin document classification controls
 - Assistant question flow with source rendering and permission mismatch indicator support
@@ -67,7 +71,7 @@ npm test
 ## Current passing suites
 
 - Unit: auth context session behavior and assistant page behavior
-- API: frontend API client requests, mutation helpers, filter query handling, document search/classification calls, and assistant calls
+- API: frontend API client requests, mutation helpers, filter query handling, meeting day/team filters, document search/classification calls, and assistant calls
 - E2E: login flow to dashboard, cases create/edit flow, admin controls flow, and assistant ask/sources flow
 
 ## Next frontend increments
