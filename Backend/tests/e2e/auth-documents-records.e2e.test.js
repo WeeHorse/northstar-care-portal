@@ -36,13 +36,17 @@ describe("E2E auth, documents, and records flow", () => {
     expect(loginRes.status).toBe(200);
     const loginBody = await loginRes.json();
 
-    const createDocRes = await fetch(`${baseUrl}/api/documents`, {
+    const uploadForm = new FormData();
+    uploadForm.append("title", "E2E Document");
+    uploadForm.append("classification", "Internal");
+    uploadForm.append("file", new Blob(["e2e upload"], { type: "text/plain" }), "e2e.txt");
+
+    const createDocRes = await fetch(`${baseUrl}/api/documents/upload`, {
       method: "POST",
       headers: {
-        "content-type": "application/json",
         authorization: `Bearer ${loginBody.token}`
       },
-      body: JSON.stringify({ title: "E2E Document", classification: "Internal" })
+      body: uploadForm
     });
     expect(createDocRes.status).toBe(201);
 

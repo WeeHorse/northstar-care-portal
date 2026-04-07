@@ -11,6 +11,7 @@ Project scaffold for the Northstar Care Portal simulation.
 - Backend and test details are documented in [Documentation/Backend-and-API-Testing.md](Documentation/Backend-and-API-Testing.md).
 - Frontend MVP baseline is implemented in [Frontend](Frontend) with authenticated routes, create/edit forms for cases and meetings, and admin controls.
 - Frontend now also includes Assistant flows, document search, admin document classification controls, case detail route views, and meetings day/team filters.
+- Document upload now supports multipart file submission (basic local storage with type/size checks).
 - Meetings create/edit forms use native date-time pickers, and meeting list timestamps are shown in local date-time format.
 - Frontend and test details are documented in [Documentation/Frontend-and-Testing.md](Documentation/Frontend-and-Testing.md).
 - Full user-story coverage matrix is documented in [Documentation/User-Story-Coverage.md](Documentation/User-Story-Coverage.md).
@@ -129,7 +130,7 @@ Use this as a quick presenter flow.
 2. Go to Cases and create a new case with title + description.
 3. Open the case detail route from the case list to show detailed read behavior.
 4. Edit the case status/priority to show optimistic UI updates.
-5. Open Documents and run a search with title/tag/category filters.
+5. Open Documents, upload a text/pdf/doc document, then run a search with title/tag/category filters.
 6. Open Records and note that support role sees restricted metadata.
 7. Open Meetings, create a meeting entry, then apply day/team filters.
 8. Open Assistant and ask an operations question, then inspect source list.

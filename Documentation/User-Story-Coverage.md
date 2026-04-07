@@ -25,7 +25,7 @@ Legend:
 | US-12 Begransad access | Created | Implemented | Support/external users receive restricted record metadata views. |
 | US-13 Atkomstlogg journaldata | Created | Partial | Successful record reads are logged; denied-path coverage is limited. |
 | US-14 Dokumentlista | Created | Implemented | Role-aware document list is implemented and tested. |
-| US-15 Ladda upp dokument | Created | Partial | Metadata-based create exists; real file upload handling is not implemented. |
+| US-15 Ladda upp dokument | Created | Implemented | Multipart file upload with type/size checks and metadata persistence is implemented in API and UI with tests. |
 | US-16 Soka dokument | Created | Implemented | Search by title/tag/category is implemented in API and UI with tests. |
 | US-17 Las rutin | Created | Implemented | Procedure list/detail with role-aware visibility is implemented. |
 | US-18 Dokumentklassning | Created | Implemented | Admin can classify documents via API and UI, with tests. |
@@ -45,7 +45,7 @@ Legend:
 ## Stories still not fully complete
 
 Partial:
-- US-05, US-08, US-10, US-11, US-13, US-15, US-28
+- US-05, US-08, US-10, US-11, US-13, US-28
 
 Missing:
 - None

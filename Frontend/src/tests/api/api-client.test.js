@@ -93,6 +93,25 @@ describe("api client", () => {
     expect(calls[1].url).toContain("/api/documents/4/classification");
   });
 
+  it("uploads document with multipart form data", async () => {
+    const calls = [];
+    vi.spyOn(global, "fetch").mockImplementation(async (url, options = {}) => {
+      calls.push({ url: String(url), method: options.method || "GET", body: options.body, headers: options.headers });
+      return {
+        ok: true,
+        json: async () => ({ id: 9, title: "Uploaded" })
+      };
+    });
+
+    const file = new File(["demo"], "demo.txt", { type: "text/plain" });
+    await api.uploadDocument("token", { title: "Uploaded", file, classification: "Internal" });
+
+    expect(calls[0].url).toContain("/api/documents/upload");
+    expect(calls[0].method).toBe("POST");
+    expect(calls[0].body instanceof FormData).toBe(true);
+    expect(calls[0].headers.authorization).toBe("Bearer token");
+  });
+
   it("calls assistant endpoints", async () => {
     const calls = [];
     vi.spyOn(global, "fetch").mockImplementation(async (url, options = {}) => {

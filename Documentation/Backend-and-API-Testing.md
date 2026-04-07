@@ -22,6 +22,7 @@ Backend MVP baseline is implemented in [Backend/server](../Backend/server) with:
   - GET /api/documents
   - GET /api/documents/search
   - POST /api/documents
+  - POST /api/documents/upload (multipart/form-data)
   - GET /api/documents/:id
   - PATCH /api/documents/:id/classification
 - Procedures endpoints:
@@ -51,6 +52,7 @@ Backend MVP baseline is implemented in [Backend/server](../Backend/server) with:
 - Role-aware procedure and meeting responses
 - Admin-only role guard for admin and audit reads
 - Audit logging for login/logout and domain read/write events, including denied case/meeting access paths
+- Document upload validation (basic): allowed mime types and max file size checks
 
 ## Run backend locally
 
@@ -88,7 +90,7 @@ npm test
 ## Current passing suites
 
 - Unit: cases, documents, procedures, meetings, admin, and assistant service behavior
-- API: auth (including logout invalidation), cases, records, documents (including search/classification), procedures, meetings (including day filtering), assistant, and admin/audit flows
+- API: auth (including logout invalidation), cases, records, documents (including multipart upload + search/classification), procedures, meetings (including day filtering), assistant, and admin/audit flows
 - E2E: auth -> cases flow, auth -> documents -> records flow, auth -> procedures -> meetings flow, auth -> admin -> audit flow, and auth -> assistant flow
 - API regression: frontend static asset serving and SPA fallback routing
 

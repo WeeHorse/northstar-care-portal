@@ -53,7 +53,7 @@ export function initDb(db) {
       insertCase.run(
         `NS-2026-${String(i).padStart(3, "0")}`,
         `Case ${i}: ${(i % 2 === 0) ? "Access" : "Workflow"} follow-up`,
-            `Seeded case ${i} for demo filtering, updates, and role scope verification.`,
+        `Seeded case ${i} for demo filtering, updates, and role scope verification.`,
         statuses[(i - 1) % statuses.length],
         priorities[(i - 1) % priorities.length],
         ((i - 1) % 4) + 1,
@@ -75,7 +75,7 @@ export function initDb(db) {
       insertComment.run(
         i,
         ((i - 1) % 4) + 1,
-        `Seeded comment ${ i } for case ${ i }.`,
+        `Seeded comment ${i} for case ${i}.`,
         addDays(base, i).toISOString()
       );
     }
@@ -94,14 +94,14 @@ export function initDb(db) {
     for (let i = 1; i <= 36; i += 1) {
       const stamp = addDays(base, i).toISOString();
       insertRecord.run(
-        `PT - ${ String(1000 + i) } `,
-            `Seeded patient record ${i} summary for workflow demonstrations.`,
+        `PT - ${String(1000 + i)} `,
+        `Seeded patient record ${i} summary for workflow demonstrations.`,
         statuses[(i - 1) % statuses.length],
-          sensitivity[(i - 1) % sensitivity.length],
-          stamp,
-          ownerTeams[(i - 1) % ownerTeams.length],
-          stamp,
-          stamp
+        sensitivity[(i - 1) % sensitivity.length],
+        stamp,
+        ownerTeams[(i - 1) % ownerTeams.length],
+        stamp,
+        stamp
       );
     }
   }
@@ -122,7 +122,7 @@ export function initDb(db) {
       const stamp = addDays(base, i).toISOString();
       const created = insertDocument.run(
         `Seeded Document ${i}`,
-            `Reference document ${i} for role-aware listing and search.`,
+        `Reference document ${i} for role-aware listing and search.`,
         classifications[(i - 1) % classifications.length],
         categories[(i - 1) % categories.length],
         ((i - 1) % 4) + 1,
@@ -152,8 +152,8 @@ export function initDb(db) {
     for (let i = 1; i <= 36; i += 1) {
       const stamp = addDays(base, i).toISOString();
       insertProcedure.run(
-        `Seeded Procedure ${ i }`,
-            `1. Validate request. 2. Apply policy ${i}. 3. Record audit trail.`,
+        `Seeded Procedure ${i}`,
+        `1. Validate request. 2. Apply policy ${i}. 3. Record audit trail.`,
         categories[(i - 1) % categories.length],
         classifications[(i - 1) % classifications.length],
         ownerTeams[(i - 1) % ownerTeams.length],
@@ -178,7 +178,7 @@ export function initDb(db) {
       const createdAt = addDays(base, Math.floor(i / 6)).toISOString();
       insertMeeting.run(
         `Seeded Meeting ${i}`,
-            `Seeded meeting ${i} for calendar and filtering demos.`,
+        `Seeded meeting ${i} for calendar and filtering demos.`,
         meetingTypes[(i - 1) % meetingTypes.length],
         start.toISOString(),
         end.toISOString(),
@@ -213,5 +213,21 @@ export function initDb(db) {
   const hasTagsColumn = documentColumns.some((column) => column.name === "tags");
   if (!hasTagsColumn) {
     db.exec("ALTER TABLE documents ADD COLUMN tags TEXT");
+  }
+  const hasFileNameColumn = documentColumns.some((column) => column.name === "file_name");
+  if (!hasFileNameColumn) {
+    db.exec("ALTER TABLE documents ADD COLUMN file_name TEXT");
+  }
+  const hasFileMimeTypeColumn = documentColumns.some((column) => column.name === "file_mime_type");
+  if (!hasFileMimeTypeColumn) {
+    db.exec("ALTER TABLE documents ADD COLUMN file_mime_type TEXT");
+  }
+  const hasFileSizeBytesColumn = documentColumns.some((column) => column.name === "file_size_bytes");
+  if (!hasFileSizeBytesColumn) {
+    db.exec("ALTER TABLE documents ADD COLUMN file_size_bytes INTEGER");
+  }
+  const hasStoragePathColumn = documentColumns.some((column) => column.name === "storage_path");
+  if (!hasStoragePathColumn) {
+    db.exec("ALTER TABLE documents ADD COLUMN storage_path TEXT");
   }
 }

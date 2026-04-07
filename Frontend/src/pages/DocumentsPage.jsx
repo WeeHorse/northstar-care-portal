@@ -8,6 +8,14 @@ export function DocumentsPage() {
   const [items, setItems] = useState([]);
   const [error, setError] = useState("");
   const [filters, setFilters] = useState({ title: "", tag: "", category: "" });
+  const [uploadDraft, setUploadDraft] = useState({
+    title: "",
+    description: "",
+    classification: "Internal",
+    category: "general",
+    tags: "",
+    file: null
+  });
 
   useEffect(() => {
     api.listDocuments(token).then((res) => setItems(res.items || [])).catch(() => setItems([]));
@@ -34,11 +42,76 @@ export function DocumentsPage() {
     }
   }
 
+  async function onUpload(event) {
+    event.preventDefault();
+    setError("");
+    if (!uploadDraft.file) {
+      setError("Please choose a file");
+      return;
+    }
+    try {
+      const created = await api.uploadDocument(token, uploadDraft);
+      setItems((prev) => [created, ...prev]);
+      setUploadDraft({
+        title: "",
+        description: "",
+        classification: "Internal",
+        category: "general",
+        tags: "",
+        file: null
+      });
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   return (
     <div className="admin-stack">
+      <form className="card inline-form" onSubmit={onUpload}>
+        <h2>Upload Document</h2>
+        <input
+          aria-label="Upload title"
+          placeholder="title"
+          value={uploadDraft.title}
+          onChange={(event) => setUploadDraft((prev) => ({ ...prev, title: event.target.value }))}
+          required
+        />
+        <input
+          placeholder="description"
+          value={uploadDraft.description}
+          onChange={(event) => setUploadDraft((prev) => ({ ...prev, description: event.target.value }))}
+        />
+        <select
+          value={uploadDraft.classification}
+          onChange={(event) => setUploadDraft((prev) => ({ ...prev, classification: event.target.value }))}
+        >
+          <option value="Public">Public</option>
+          <option value="Internal">Internal</option>
+          <option value="Confidential">Confidential</option>
+          <option value="Restricted">Restricted</option>
+        </select>
+        <input
+          placeholder="category"
+          value={uploadDraft.category}
+          onChange={(event) => setUploadDraft((prev) => ({ ...prev, category: event.target.value }))}
+        />
+        <input
+          placeholder="tags"
+          value={uploadDraft.tags}
+          onChange={(event) => setUploadDraft((prev) => ({ ...prev, tags: event.target.value }))}
+        />
+        <input
+          type="file"
+          aria-label="Document file"
+          onChange={(event) => setUploadDraft((prev) => ({ ...prev, file: event.target.files?.[0] || null }))}
+          required
+        />
+        <button type="submit">Upload</button>
+      </form>
+
       <form className="card inline-form" onSubmit={onSearch}>
         <h2>Search Documents</h2>
-        <input placeholder="title" value={filters.title} onChange={(event) => setFilters((prev) => ({ ...prev, title: event.target.value }))} />
+        <input aria-label="Search title" placeholder="title" value={filters.title} onChange={(event) => setFilters((prev) => ({ ...prev, title: event.target.value }))} />
         <input placeholder="tag" value={filters.tag} onChange={(event) => setFilters((prev) => ({ ...prev, tag: event.target.value }))} />
         <input placeholder="category" value={filters.category} onChange={(event) => setFilters((prev) => ({ ...prev, category: event.target.value }))} />
         <button type="submit">Search</button>

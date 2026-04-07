@@ -58,6 +58,10 @@ CREATE TABLE IF NOT EXISTS documents (
   category TEXT,
   tags TEXT,
   uploaded_by_user_id INTEGER,
+  file_name TEXT,
+  file_mime_type TEXT,
+  file_size_bytes INTEGER,
+  storage_path TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   FOREIGN KEY (uploaded_by_user_id) REFERENCES users(id)

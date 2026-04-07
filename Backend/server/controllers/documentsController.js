@@ -32,6 +32,27 @@ export function createDocumentsController(documentsService) {
       const created = documentsService.createDocument({ payload: req.body, user: req.user });
       return res.status(201).json(created);
     },
+    upload(req, res) {
+      const { title } = req.body || {};
+      if (!title) {
+        return res.status(400).json({ error: "title is required" });
+      }
+      if (!req.file) {
+        return res.status(400).json({ error: "file is required" });
+      }
+
+      const created = documentsService.createDocument({
+        payload: {
+          ...req.body,
+          fileName: req.file.originalname,
+          fileMimeType: req.file.mimetype,
+          fileSizeBytes: req.file.size,
+          storagePath: req.uploadedFilePath || null
+        },
+        user: req.user
+      });
+      return res.status(201).json(created);
+    },
     classify(req, res) {
       const classification = req.body?.classification;
       if (!classification) {

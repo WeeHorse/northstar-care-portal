@@ -27,6 +27,10 @@ export function createDocumentsService({ documentsRepository, auditRepository })
       classification: item.classification,
       category: item.category,
       tags: parseTags(item.tags),
+      fileName: item.file_name || null,
+      fileMimeType: item.file_mime_type || null,
+      fileSizeBytes: item.file_size_bytes ?? null,
+      storagePath: item.storage_path || null,
       createdAt: item.created_at,
       updatedAt: item.updated_at
     };
@@ -60,7 +64,11 @@ export function createDocumentsService({ documentsRepository, auditRepository })
         classification: payload.classification || "Internal",
         category: payload.category || "general",
         tags: serializeTags(payload.tags),
-        uploadedByUserId: user.id
+        uploadedByUserId: user.id,
+        fileName: payload.fileName,
+        fileMimeType: payload.fileMimeType,
+        fileSizeBytes: payload.fileSizeBytes,
+        storagePath: payload.storagePath
       });
 
       const roleId = documentsRepository.findRoleIdByName(user.role);

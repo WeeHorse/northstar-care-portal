@@ -66,4 +66,27 @@ describe("Documents API", () => {
     expect(classified.status).toBe(200);
     expect(classified.body.classification).toBe("Restricted");
   });
+
+  it("uploads a document file with metadata", async () => {
+    const { app } = createTestContext();
+    const token = await login(app, "adam.admin");
+
+    const uploaded = await request(app)
+      .post("/api/documents/upload")
+      .set("Authorization", `Bearer ${token}`)
+      .field("title", "Upload Policy")
+      .field("classification", "Internal")
+      .field("category", "policy")
+      .field("tags", "upload,policy")
+      .attach("file", Buffer.from("hello world"), {
+        filename: "upload-policy.txt",
+        contentType: "text/plain"
+      });
+
+    expect(uploaded.status).toBe(201);
+    expect(uploaded.body.title).toBe("Upload Policy");
+    expect(uploaded.body.fileName).toBe("upload-policy.txt");
+    expect(uploaded.body.fileMimeType).toBe("text/plain");
+    expect(uploaded.body.fileSizeBytes).toBeGreaterThan(0);
+  });
 });

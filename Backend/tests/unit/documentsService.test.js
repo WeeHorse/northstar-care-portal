@@ -14,6 +14,10 @@ describe("documentsService", () => {
               classification: "Internal",
               category: "procedure",
               tags: "triage,policy",
+              file_name: "guide.pdf",
+              file_mime_type: "application/pdf",
+              file_size_bytes: 2048,
+              storage_path: "uploads/guide.pdf",
               created_at: "2026-01-01",
               updated_at: "2026-01-02"
             }
@@ -31,6 +35,10 @@ describe("documentsService", () => {
       classification: "Internal",
       category: "procedure",
       tags: ["triage", "policy"],
+      fileName: "guide.pdf",
+      fileMimeType: "application/pdf",
+      fileSizeBytes: 2048,
+      storagePath: "uploads/guide.pdf",
       createdAt: "2026-01-01",
       updatedAt: "2026-01-02"
     });
@@ -63,11 +71,18 @@ describe("documentsService", () => {
     });
 
     const created = service.createDocument({
-      payload: { title: "Policy" },
+      payload: {
+        title: "Policy",
+        fileName: "policy.txt",
+        fileMimeType: "text/plain",
+        fileSizeBytes: 64,
+        storagePath: "uploads/policy.txt"
+      },
       user: { id: 5, role: "Manager" }
     });
 
     expect(created.id).toBe(10);
+    expect(calls[0][1].fileName).toBe("policy.txt");
     expect(calls[1]).toEqual(["grantRoleAccess", 10, 2, "owner"]);
   });
 

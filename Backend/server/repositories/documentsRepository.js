@@ -24,7 +24,7 @@ export function createDocumentsRepository(db) {
         const whereClause = searchWhere.length ? `WHERE ${searchWhere.join(" AND ")}` : "";
         return db
           .prepare(
-            `SELECT d.id, d.title, d.description, d.classification, d.category, d.tags, d.uploaded_by_user_id, d.created_at, d.updated_at
+            `SELECT d.id, d.title, d.description, d.classification, d.category, d.tags, d.uploaded_by_user_id, d.file_name, d.file_mime_type, d.file_size_bytes, d.storage_path, d.created_at, d.updated_at
              FROM documents d
              ${whereClause}
              ORDER BY d.updated_at DESC`
@@ -36,7 +36,7 @@ export function createDocumentsRepository(db) {
       const whereClause = searchWhere.length ? ` AND ${searchWhere.join(" AND ")}` : "";
       return db
         .prepare(
-          `SELECT DISTINCT d.id, d.title, d.description, d.classification, d.category, d.tags, d.uploaded_by_user_id, d.created_at, d.updated_at
+          `SELECT DISTINCT d.id, d.title, d.description, d.classification, d.category, d.tags, d.uploaded_by_user_id, d.file_name, d.file_mime_type, d.file_size_bytes, d.storage_path, d.created_at, d.updated_at
            FROM documents d
            JOIN document_permissions dp ON dp.document_id = d.id
            JOIN roles r ON r.id = dp.role_id
@@ -50,7 +50,7 @@ export function createDocumentsRepository(db) {
       if (role === "Admin") {
         return db
           .prepare(
-            `SELECT id, title, description, classification, category, tags, uploaded_by_user_id, created_at, updated_at
+            `SELECT id, title, description, classification, category, tags, uploaded_by_user_id, file_name, file_mime_type, file_size_bytes, storage_path, created_at, updated_at
              FROM documents
              WHERE id = ?`
           )
@@ -59,7 +59,7 @@ export function createDocumentsRepository(db) {
 
       return db
         .prepare(
-          `SELECT d.id, d.title, d.description, d.classification, d.category, d.tags, d.uploaded_by_user_id, d.created_at, d.updated_at
+          `SELECT d.id, d.title, d.description, d.classification, d.category, d.tags, d.uploaded_by_user_id, d.file_name, d.file_mime_type, d.file_size_bytes, d.storage_path, d.created_at, d.updated_at
            FROM documents d
            JOIN document_permissions dp ON dp.document_id = d.id
            JOIN roles r ON r.id = dp.role_id
@@ -71,8 +71,8 @@ export function createDocumentsRepository(db) {
       const now = new Date().toISOString();
       const result = db
         .prepare(
-          `INSERT INTO documents (title, description, classification, category, tags, uploaded_by_user_id, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+          `INSERT INTO documents (title, description, classification, category, tags, uploaded_by_user_id, file_name, file_mime_type, file_size_bytes, storage_path, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
         )
         .run(
           payload.title,
@@ -81,6 +81,10 @@ export function createDocumentsRepository(db) {
           payload.category ?? null,
           payload.tags ?? null,
           payload.uploadedByUserId,
+          payload.fileName ?? null,
+          payload.fileMimeType ?? null,
+          payload.fileSizeBytes ?? null,
+          payload.storagePath ?? null,
           now,
           now
         );

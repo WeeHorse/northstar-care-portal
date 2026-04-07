@@ -19,6 +19,25 @@ async function request(path, { method = "GET", token, body } = {}) {
   return payload;
 }
 
+async function requestForm(path, { method = "POST", token, formData } = {}) {
+  const headers = {};
+  if (token) {
+    headers.authorization = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method,
+    headers,
+    body: formData
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload.error || "Request failed");
+  }
+  return payload;
+}
+
 export const api = {
   login: (username, password) => request("/api/auth/login", { method: "POST", body: { username, password } }),
   me: (token) => request("/api/auth/me", { token }),
@@ -43,6 +62,17 @@ export const api = {
     if (filters.category) query.set("category", filters.category);
     const suffix = query.toString() ? `?${query.toString()}` : "";
     return request(`/api/documents/search${suffix}`, { token });
+  },
+  uploadDocument: (token, payload) => {
+    const formData = new FormData();
+    formData.append("title", payload.title || "");
+    if (payload.description) formData.append("description", payload.description);
+    if (payload.classification) formData.append("classification", payload.classification);
+    if (payload.category) formData.append("category", payload.category);
+    if (payload.tags) formData.append("tags", payload.tags);
+    if (payload.file) formData.append("file", payload.file);
+
+    return requestForm("/api/documents/upload", { method: "POST", token, formData });
   },
   classifyDocument: (token, id, classification) =>
     request(`/api/documents/${id}/classification`, { method: "PATCH", token, body: { classification } }),
