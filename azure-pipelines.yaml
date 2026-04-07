@@ -1,0 +1,175 @@
+trigger:
+  branches:
+    include:
+      - main
+
+# Only run on pushes to main as requested.
+pr: none
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  nodeVersion: "20.x"
+  reportDir: "$(Build.SourcesDirectory)/Testing/reports"
+
+steps:
+  # Checkout repository content.
+  - checkout: self
+    clean: true
+
+  # Pin a known Node.js runtime for consistent CI behavior.
+  - task: NodeTool@0
+    displayName: "Use Node.js $(nodeVersion)"
+    inputs:
+      versionSpec: "$(nodeVersion)"
+
+  # Create a shared reports folder used by test output, scan output, and summary files.
+  - script: mkdir -p "$(reportDir)"
+    displayName: "Prepare report directory"
+
+  # Install backend dependencies.
+  - script: npm ci
+    displayName: "Install backend dependencies"
+    workingDirectory: "$(Build.SourcesDirectory)/Backend"
+
+  # Install frontend dependencies.
+  - script: npm ci
+    displayName: "Install frontend dependencies"
+    workingDirectory: "$(Build.SourcesDirectory)/Frontend"
+
+  # Build frontend assets; Vite is configured to emit into Backend/wwwroot.
+  - script: npm run build
+    displayName: "Build frontend to Backend/wwwroot"
+    workingDirectory: "$(Build.SourcesDirectory)/Frontend"
+
+  # Validate that backend can serve the built frontend and health endpoint.
+  - script: |
+      set -euo pipefail
+      cd "$(Build.SourcesDirectory)/Backend"
+      npm run start &
+      SERVER_PID=$!
+      trap 'kill "$SERVER_PID" || true' EXIT
+
+      for i in {1..30}; do
+        if curl -fsS http://localhost:3001/health >/dev/null; then
+          break
+        fi
+        sleep 1
+      done
+
+      curl -fsS http://localhost:3001/ >/dev/null
+      kill "$SERVER_PID" || true
+      wait "$SERVER_PID" || true
+      trap - EXIT
+    displayName: "Run backend and verify hosting"
+
+  # Run frontend test suite and emit JUnit XML for pipeline test reporting.
+  - script: npm test -- --reporter=junit --outputFile="$(reportDir)/frontend-junit.xml"
+    displayName: "Run frontend tests"
+    workingDirectory: "$(Build.SourcesDirectory)/Frontend"
+
+  # Run backend test suite and emit JUnit XML for pipeline test reporting.
+  - script: npm test -- --reporter=junit --outputFile="$(reportDir)/backend-junit.xml"
+    displayName: "Run backend tests"
+    workingDirectory: "$(Build.SourcesDirectory)/Backend"
+
+  # Publish frontend JUnit results to Azure DevOps Test Runs.
+  - task: PublishTestResults@2
+    displayName: "Publish frontend test results"
+    condition: succeededOrFailed()
+    inputs:
+      testResultsFormat: "JUnit"
+      testResultsFiles: "$(reportDir)/frontend-junit.xml"
+      testRunTitle: "Frontend Vitest"
+      failTaskOnFailedTests: true
+
+  # Publish backend JUnit results to Azure DevOps Test Runs.
+  - task: PublishTestResults@2
+    displayName: "Publish backend test results"
+    condition: succeededOrFailed()
+    inputs:
+      testResultsFormat: "JUnit"
+      testResultsFiles: "$(reportDir)/backend-junit.xml"
+      testRunTitle: "Backend Vitest"
+      failTaskOnFailedTests: true
+
+  # Perform dependency scans and keep JSON output for later reporting.
+  - script: |
+      set -euo pipefail
+      cd "$(Build.SourcesDirectory)/Backend"
+      npm audit --json > "$(reportDir)/backend-audit.json" || true
+      cd "$(Build.SourcesDirectory)/Frontend"
+      npm audit --json > "$(reportDir)/frontend-audit.json" || true
+    displayName: "Dependency scan (npm audit)"
+
+  # Build a consolidated markdown report and upload it to the pipeline summary.
+  - script: |
+      set -euo pipefail
+      node <<'NODE'
+      const fs = require('fs');
+      const path = require('path');
+
+      const reportDir = process.env.REPORT_DIR;
+
+      function safeReadJson(fileName) {
+        try {
+          const fullPath = path.join(reportDir, fileName);
+          return JSON.parse(fs.readFileSync(fullPath, 'utf8'));
+        } catch {
+          return null;
+        }
+      }
+
+      function vulnerabilitySummary(auditJson) {
+        const v = auditJson?.metadata?.vulnerabilities;
+        if (!v) {
+          return { low: 'n/a', moderate: 'n/a', high: 'n/a', critical: 'n/a', total: 'n/a' };
+        }
+        return {
+          low: v.low ?? 0,
+          moderate: v.moderate ?? 0,
+          high: v.high ?? 0,
+          critical: v.critical ?? 0,
+          total: v.total ?? 0
+        };
+      }
+
+      const backendAudit = vulnerabilitySummary(safeReadJson('backend-audit.json'));
+      const frontendAudit = vulnerabilitySummary(safeReadJson('frontend-audit.json'));
+
+      const summary = [
+        '# CI Report',
+        '',
+        '## Build and Hosting',
+        '- Frontend build completed and emitted into Backend/wwwroot.',
+        '- Backend startup and hosting checks passed for /health and /.',
+        '',
+        '## Tests',
+        '- Frontend JUnit: frontend-junit.xml',
+        '- Backend JUnit: backend-junit.xml',
+        '',
+        '## Dependency Scan (npm audit)',
+        '| Area | Low | Moderate | High | Critical | Total |',
+        '|---|---:|---:|---:|---:|---:|',
+        `| Backend | ${backendAudit.low} | ${backendAudit.moderate} | ${backendAudit.high} | ${backendAudit.critical} | ${backendAudit.total} |`,
+        `| Frontend | ${frontendAudit.low} | ${frontendAudit.moderate} | ${frontendAudit.high} | ${frontendAudit.critical} | ${frontendAudit.total} |`,
+        ''
+      ].join('\n');
+
+      fs.writeFileSync(path.join(reportDir, 'ci-summary.md'), summary, 'utf8');
+      NODE
+
+      echo "##vso[task.uploadsummary]$(reportDir)/ci-summary.md"
+    displayName: "Generate and upload CI summary report"
+    env:
+      REPORT_DIR: "$(reportDir)"
+
+  # Publish all generated reports (JUnit, audit JSON, markdown summary) as a build artifact.
+  - task: PublishBuildArtifacts@1
+    displayName: "Publish CI report artifact"
+    condition: succeededOrFailed()
+    inputs:
+      PathtoPublish: "$(reportDir)"
+      ArtifactName: "ci-report"
+      publishLocation: "Container"

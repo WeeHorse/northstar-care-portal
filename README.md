@@ -173,3 +173,17 @@ Current specification status:
 Current implementation progress against user stories:
 - Implemented in this iteration: US-16 (document search), US-18 (document classification), US-23 (assistant question), US-24 (assistant sources), US-25 (permission mismatch flags), US-26 (role-aware assistant mode).
 - Full US-01 to US-30 implementation status (implemented/partial/missing) is tracked in [Documentation/User-Story-Coverage.md](Documentation/User-Story-Coverage.md).
+
+## Azure DevOps pipeline
+
+- A CI pipeline is now available at [pipeline.yaml](pipeline.yaml).
+- Trigger: push to `main` only.
+- Order of execution:
+	1. Install backend and frontend dependencies.
+	2. Build frontend into [Backend/wwwroot](Backend/wwwroot).
+	3. Start backend and verify hosted endpoints (`/health` and `/`).
+	4. Run frontend and backend test suites (JUnit output).
+	5. Run dependency scans for backend and frontend using `npm audit`.
+	6. Generate and publish a consolidated CI report summary and artifact.
+
+Generated CI artifacts are published from `Testing/reports` as artifact name `ci-report`.
