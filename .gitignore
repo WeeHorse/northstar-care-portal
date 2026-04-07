@@ -1,0 +1,53 @@
+# OS files
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Node dependencies
+node_modules/
+Backend/node_modules/
+Frontend/node_modules/
+
+# Test artifacts
+coverage/
+.nyc_output/
+
+# Build output
+dist/
+build/
+.out/
+
+# Runtime/temp files
+*.pid
+*.seed
+*.pid.lock
+*.tmp
+*.temp
+
+# SQLite and local databases
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# IDE/editor files
+.vscode/*.log
+.idea/
+
+# Python cache (if tooling/scripts are added)
+__pycache__/
+*.py[cod]
+
+# Misc
+*.swp
+*.swo

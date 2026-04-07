@@ -1,0 +1,10 @@
+import { createDb } from "../server/db/connection.js";
+import { initDb } from "../server/db/initDb.js";
+import { createApp } from "../server/app.js";
+
+export function createTestContext() {
+  const db = createDb(":memory:");
+  initDb(db);
+  const app = createApp({ db, jwtSecret: "test-secret" });
+  return { app, db };
+}
