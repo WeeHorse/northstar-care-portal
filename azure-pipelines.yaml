@@ -1,49 +1,69 @@
+# Starta pipeline automatiskt vid push till main.
 trigger:
   branches:
     include:
       - main
 
-# Only run on pushes to main as requested.
+# Kör inte pipeline automatiskt på pull requests.
 pr: none
 
+# Använd senaste Ubuntu-agent i Azure Pipelines.
 pool:
   vmImage: ubuntu-latest
 
+# Gemensamma variabler som används i flera steg.
 variables:
-  nodeVersion: "20.x"
+  # Node-version som installeras i build-agenten.
+  nodeVersion: "24.x"
+  # Mapp där testresultat och rapportfiler sparas.
   reportDir: "$(Build.SourcesDirectory)/Testing/reports"
 
+# Pipeline-flödet körs uppifrån och ned.
 steps:
-  # Checkout repository content.
+  # Hämtar källkoden och städar arbetsytan för en ren körning.
   - checkout: self
     clean: true
 
-  # Pin a known Node.js runtime for consistent CI behavior.
+  # Installerar vald Node.js-version.
   - task: NodeTool@0
     displayName: "Use Node.js $(nodeVersion)"
     inputs:
       versionSpec: "$(nodeVersion)"
 
-  # Create a shared reports folder used by test output, scan output, and summary files.
+  # Skapar katalog för rapporter (om den inte redan finns).
   - script: mkdir -p "$(reportDir)"
     displayName: "Prepare report directory"
 
-  # Install backend dependencies.
+  # Installerar backend-beroenden låst enligt package-lock.json.
   - script: npm ci
     displayName: "Install backend dependencies"
     workingDirectory: "$(Build.SourcesDirectory)/Backend"
 
-  # Install frontend dependencies.
+  # Installerar frontend-beroenden låst enligt package-lock.json.
   - script: npm ci
     displayName: "Install frontend dependencies"
     workingDirectory: "$(Build.SourcesDirectory)/Frontend"
 
-  # Build frontend assets; Vite is configured to emit into Backend/wwwroot.
+  # Bygger frontend och lägger byggda filer i Backend/wwwroot.
   - script: npm run build
     displayName: "Build frontend to Backend/wwwroot"
     workingDirectory: "$(Build.SourcesDirectory)/Frontend"
 
-  # Validate that backend can serve the built frontend and health endpoint.
+  # Säkerställer att build-steget inte lämnar kvar ocommittade filändringar.
+  - script: |
+      set -euo pipefail
+      cd "$(Build.SourcesDirectory)"
+
+      if [ -n "$(git status --porcelain)" ]; then
+        echo "Repository is dirty after build. Pending changes:"
+        git status --short
+        exit 1
+      fi
+
+      echo "Repository is clean after build."
+    displayName: "Verify repository is clean after build"
+
+  # Startar backend tillfälligt och verifierar att hosting fungerar.
   - script: |
       set -euo pipefail
       cd "$(Build.SourcesDirectory)/Backend"
@@ -64,17 +84,27 @@ steps:
       trap - EXIT
     displayName: "Run backend and verify hosting"
 
-  # Run frontend test suite and emit JUnit XML for pipeline test reporting.
-  - script: npm test -- --reporter=junit --outputFile="$(reportDir)/frontend-junit.xml"
+  # Kör frontend-tester med Vitest och exporterar JUnit-rapport.
+  - script: npx vitest run --reporter=junit --outputFile="$(reportDir)/frontend-junit.xml"
     displayName: "Run frontend tests"
     workingDirectory: "$(Build.SourcesDirectory)/Frontend"
 
-  # Run backend test suite and emit JUnit XML for pipeline test reporting.
-  - script: npm test -- --reporter=junit --outputFile="$(reportDir)/backend-junit.xml"
+  # Kör backend-tester med Vitest och exporterar JUnit-rapport.
+  - script: npx vitest run --reporter=junit --outputFile="$(reportDir)/backend-junit.xml"
     displayName: "Run backend tests"
     workingDirectory: "$(Build.SourcesDirectory)/Backend"
 
-  # Publish frontend JUnit results to Azure DevOps Test Runs.
+  # Kör npm audit för backend och frontend och sparar JSON-rapporter.
+  # Steget får inte stoppa pipelinen vid sårbarheter (|| true).
+  - script: |
+      set -euo pipefail
+      cd "$(Build.SourcesDirectory)/Backend"
+      npm audit --json > "$(reportDir)/backend-audit.json" || true
+      cd "$(Build.SourcesDirectory)/Frontend"
+      npm audit --json > "$(reportDir)/frontend-audit.json" || true
+    displayName: "Dependency scan (npm audit)"
+
+  # Publicerar frontendens JUnit-resultat även om tidigare steg har misslyckats.
   - task: PublishTestResults@2
     displayName: "Publish frontend test results"
     condition: succeededOrFailed()
@@ -84,7 +114,7 @@ steps:
       testRunTitle: "Frontend Vitest"
       failTaskOnFailedTests: true
 
-  # Publish backend JUnit results to Azure DevOps Test Runs.
+  # Publicerar backendens JUnit-resultat även om tidigare steg har misslyckats.
   - task: PublishTestResults@2
     displayName: "Publish backend test results"
     condition: succeededOrFailed()
@@ -94,16 +124,8 @@ steps:
       testRunTitle: "Backend Vitest"
       failTaskOnFailedTests: true
 
-  # Perform dependency scans and keep JSON output for later reporting.
-  - script: |
-      set -euo pipefail
-      cd "$(Build.SourcesDirectory)/Backend"
-      npm audit --json > "$(reportDir)/backend-audit.json" || true
-      cd "$(Build.SourcesDirectory)/Frontend"
-      npm audit --json > "$(reportDir)/frontend-audit.json" || true
-    displayName: "Dependency scan (npm audit)"
-
-  # Build a consolidated markdown report and upload it to the pipeline summary.
+      # Genererar en sammanfattning (Markdown) av build, test och audit.
+      # Laddar sedan upp sammanfattningen till pipeline-runens Summary-flik.
   - script: |
       set -euo pipefail
       node <<'NODE'
@@ -165,7 +187,7 @@ steps:
     env:
       REPORT_DIR: "$(reportDir)"
 
-  # Publish all generated reports (JUnit, audit JSON, markdown summary) as a build artifact.
+  # Publicerar hela rapportkatalogen som byggartefakt.
   - task: PublishBuildArtifacts@1
     displayName: "Publish CI report artifact"
     condition: succeededOrFailed()
@@ -173,3 +195,24 @@ steps:
       PathtoPublish: "$(reportDir)"
       ArtifactName: "ci-report"
       publishLocation: "Container"
+
+  # Skapar zip-paket av backend-applikationen för deployment.
+  - task: ArchiveFiles@2
+    displayName: "Archive backend app"
+    inputs:
+      rootFolderOrFile: "$(Build.SourcesDirectory)/Backend"
+      includeRootFolder: false
+      archiveType: zip
+      archiveFile: "$(Build.ArtifactStagingDirectory)/app.zip"
+      replaceExistingArchive: true
+
+  # Deployar zip-paketet till Azure App Service om allt lyckades.
+  - task: AzureRmWebAppDeployment@4
+    displayName: "Deploy to Azure App Service"
+    condition: succeeded()
+    inputs:
+      ConnectionType: "AzureRM"
+      azureSubscription: "ado-service-con-app-0"
+      appType: "webAppLinux"
+      WebAppName: "northstar-care-group-0"
+      packageForLinux: "$(Build.ArtifactStagingDirectory)/app.zip"
