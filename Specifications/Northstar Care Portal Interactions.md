@@ -21,6 +21,7 @@ Nedan är en YAML-specifikation per user story, enligt kraven i `.github/copilot
 | Record Overview | US-13 Admin audits record access | listRecordAccessAuditLogs |
 | Documents and Procedures | US-14 User lists accessible documents | listAccessibleDocuments |
 | Documents and Procedures | US-15 User uploads document | uploadDocument |
+| Documents and Procedures | US-15a User downloads document | downloadDocumentFile |
 | Documents and Procedures | US-16 User searches documents | searchDocuments |
 | Documents and Procedures | US-17 Support agent reads internal procedure | getProcedureDetail |
 | Documents and Procedures | US-18 Admin classifies document | classifyDocument |
@@ -1115,6 +1116,44 @@ response_graph:
 shared_functions:
   - "mapSecurityModeRequest"
   - "mapSecurityModeResult"
+```
+
+---
+
+```yaml
+use_case: "Documents and Procedures"
+interaction: "US-15a User downloads document file"
+
+request_graph:
+  - function: "getFileDownloadEndpoint"
+    layer: "boundary"
+    responsibility: "Receive GET request for document file download"
+  - function: "extractDocumentIdFromPath"
+    layer: "utility"
+    responsibility: "Extract document ID from URL path parameter"
+  - function: "downloadDocumentFile"
+    layer: "core"
+    responsibility: "Retrieve file for authenticated user with access control"
+
+core:
+  function: "downloadDocumentFile"
+  responsibility: "Authorize user access to document and return file"
+  delegates:
+    - "findDocumentByIdWithAccess"
+    - "validateFileExists"
+    - "auditDocumentDownload"
+
+response_graph:
+  - function: "attachFileHeaders"
+    layer: "utility"
+    responsibility: "Set content disposition and type headers"
+  - function: "sendFileContent"
+    layer: "boundary"
+    responsibility: "Stream file content to client"
+
+shared_functions:
+  - "findDocumentByIdWithAccess"
+  - "auditDocumentDownload"
 ```
 
 ---

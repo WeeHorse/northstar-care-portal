@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { createDocumentsService } from "../../server/services/documentsService.js";
 
 describe("documentsService", () => {
@@ -39,6 +39,7 @@ describe("documentsService", () => {
       fileMimeType: "application/pdf",
       fileSizeBytes: 2048,
       storagePath: "uploads/guide.pdf",
+      downloadLink: "/api/documents/1/download",
       createdAt: "2026-01-01",
       updatedAt: "2026-01-02"
     });
@@ -112,5 +113,148 @@ describe("documentsService", () => {
     });
 
     expect(updated.classification).toBe("Restricted");
+  });
+
+  describe("downloadDocument", () => {
+    it("returns null if document not found", async () => {
+      const service = createDocumentsService({
+        documentsRepository: {
+          findByIdAccessible() {
+            return null;
+          }
+        },
+        auditRepository: { write() { } },
+        storage: {
+          async fileExists() { return true; },
+          async getFileSize() { return 1024; }
+        }
+      });
+
+      const result = await service.downloadDocument({
+        id: 999,
+        user: { id: 2, role: "SupportAgent" },
+        storage: { async fileExists() { return true; }, async getFileSize() { return 1024; } }
+      });
+
+      expect(result).toBeNull();
+    });
+
+    it("returns noFileAttached if document has no storage path", async () => {
+      const service = createDocumentsService({
+        documentsRepository: {
+          findByIdAccessible() {
+            return {
+              id: 1,
+              title: "Metadata Only",
+              description: "",
+              classification: "Internal",
+              category: "note",
+              tags: null,
+              storage_path: null,
+              file_name: null,
+              file_mime_type: null,
+              file_size_bytes: null,
+              created_at: "t1",
+              updated_at: "t1"
+            };
+          }
+        },
+        auditRepository: { write() { } },
+        storage: {
+          async fileExists() { return true; },
+          async getFileSize() { return 1024; }
+        }
+      });
+
+      const result = await service.downloadDocument({
+        id: 1,
+        user: { id: 2, role: "SupportAgent" },
+        storage: { async fileExists() { return true; }, async getFileSize() { return 1024; } }
+      });
+
+      expect(result.noFileAttached).toBe(true);
+    });
+
+    it("returns noFileAttached if document has no file name", async () => {
+      const service = createDocumentsService({
+        documentsRepository: {
+          findByIdAccessible() {
+            return {
+              id: 1,
+              title: "No File",
+              description: "",
+              classification: "Internal",
+              category: "note",
+              tags: null,
+              storage_path: "uploads/something.pdf",
+              file_name: null,
+              file_mime_type: null,
+              file_size_bytes: null,
+              created_at: "t1",
+              updated_at: "t1"
+            };
+          }
+        },
+        auditRepository: { write() { } },
+        storage: {
+          async fileExists() { return true; },
+          async getFileSize() { return 1024; }
+        }
+      });
+
+      const result = await service.downloadDocument({
+        id: 1,
+        user: { id: 2, role: "SupportAgent" },
+        storage: { async fileExists() { return true; }, async getFileSize() { return 1024; } }
+      });
+
+      expect(result.noFileAttached).toBe(true);
+    });
+
+    it("audits document downloads in service", async () => {
+      const auditCalls = [];
+      const mockStorage = {
+        async fileExists() { return true; },
+        async getFileSize() { return 1024; }
+      };
+
+      const service = createDocumentsService({
+        documentsRepository: {
+          findByIdAccessible() {
+            return {
+              id: 5,
+              title: "Policy",
+              description: "",
+              classification: "Internal",
+              category: "policy",
+              tags: null,
+              storage_path: "uploads/policy.pdf",
+              file_name: "policy.pdf",
+              file_mime_type: "application/pdf",
+              file_size_bytes: 1024,
+              created_at: "t1",
+              updated_at: "t1"
+            };
+          }
+        },
+        auditRepository: {
+          write(payload) {
+            auditCalls.push(payload);
+          }
+        },
+        storage: mockStorage
+      });
+
+      const result = await service.downloadDocument({
+        id: 5,
+        user: { id: 3, role: "Manager" },
+        storage: mockStorage
+      });
+
+      expect(result).not.toBeNull();
+      expect(result.filePath).toBe("uploads/policy.pdf");
+      expect(auditCalls.length).toBe(1);
+      expect(auditCalls[0].eventType).toBe("document_download");
+    });
   });
 });

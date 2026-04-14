@@ -20,7 +20,9 @@ export function ResourceTable({ title, items, columns }) {
               items.map((item) => (
                 <tr key={item.id || item.key || JSON.stringify(item)}>
                   {columns.map((col) => (
-                    <td key={col.key}>{item[col.key] ?? "-"}</td>
+                    <td key={col.key}>
+                      {col.render ? col.render(item[col.key], item) : (item[col.key] ?? "-")}
+                    </td>
                   ))}
                 </tr>
               ))

@@ -206,6 +206,56 @@ steps:
       archiveFile: "$(Build.ArtifactStagingDirectory)/app.zip"
       replaceExistingArchive: true
 
+  # Verifierar Azure Blob Storage-konfiguration.
+  # Obs: Detta är en enkelt kontroll som inte kräver AppService-läsbehörigheter.
+  # För att läsa AppService-inställningarna direkt, ge Service Connection
+  # rollen "Website Contributor" i Azure Portal.
+  - script: |
+      set -euo pipefail
+      
+      echo "Verifying Azure Blob Storage code dependencies..."
+      echo ""
+      
+      # Kontrollera att @azure/storage-blob är installerat
+      if grep -q '"@azure/storage-blob"' "$(Build.SourcesDirectory)/Backend/package.json"; then
+        echo "✓ @azure/storage-blob is in package.json"
+      else
+        echo "✗ @azure/storage-blob NOT found in package.json"
+        exit 1
+      fi
+      
+      # Kontrollera att storage-filer existerar
+      if [ -f "$(Build.SourcesDirectory)/Backend/server/storage/AzureBlobStorage.js" ]; then
+        echo "✓ AzureBlobStorage.js exists"
+      else
+        echo "✗ AzureBlobStorage.js NOT found"
+        exit 1
+      fi
+      
+      if [ -f "$(Build.SourcesDirectory)/Backend/server/storage/LocalFileStorage.js" ]; then
+        echo "✓ LocalFileStorage.js exists"
+      else
+        echo "✗ LocalFileStorage.js NOT found"
+        exit 1
+      fi
+      
+      if [ -f "$(Build.SourcesDirectory)/Backend/server/storage/FileStorageFactory.js" ]; then
+        echo "✓ FileStorageFactory.js exists"
+      else
+        echo "✗ FileStorageFactory.js NOT found"
+        exit 1
+      fi
+      
+      echo ""
+      echo "✓ All Azure Blob Storage code is in place!"
+      echo ""
+      echo "REMINDER: Ensure the following are set in AppService Configuration:"
+      echo "  - STORAGE_TYPE=azure"
+      echo "  - AZURE_STORAGE_CONNECTION_STRING=(your connection string)"
+      echo "  - AZURE_STORAGE_CONTAINER_NAME=documents"
+    displayName: "Verify Azure Blob Storage code"
+    workingDirectory: "$(Build.SourcesDirectory)"
+
   # Deployar zip-paketet till Azure App Service om allt lyckades.
   - task: AzureRmWebAppDeployment@4
     displayName: "Deploy to Azure App Service"

@@ -5,6 +5,10 @@ export function createDocumentsRepository(db) {
       where.push("LOWER(d.title) LIKE ?");
       values.push(`%${String(filters.title).toLowerCase()}%`);
     }
+    if (filters.description) {
+      where.push("LOWER(COALESCE(d.description, '')) LIKE ?");
+      values.push(`%${String(filters.description).toLowerCase()}%`);
+    }
     if (filters.category) {
       where.push("LOWER(COALESCE(d.category, '')) LIKE ?");
       values.push(`%${String(filters.category).toLowerCase()}%`);
@@ -12,6 +16,10 @@ export function createDocumentsRepository(db) {
     if (filters.tag) {
       where.push("LOWER(COALESCE(d.tags, '')) LIKE ?");
       values.push(`%${String(filters.tag).toLowerCase()}%`);
+    }
+    if (filters.fileName) {
+      where.push("LOWER(COALESCE(d.file_name, '')) LIKE ?");
+      values.push(`%${String(filters.fileName).toLowerCase()}%`);
     }
     return where;
   }
@@ -32,7 +40,7 @@ export function createDocumentsRepository(db) {
           .all(...values);
       }
 
-      values.push(role);
+      const searchValues = [role, ...values];
       const whereClause = searchWhere.length ? ` AND ${searchWhere.join(" AND ")}` : "";
       return db
         .prepare(
@@ -44,7 +52,7 @@ export function createDocumentsRepository(db) {
            ${whereClause}
            ORDER BY d.updated_at DESC`
         )
-        .all(...values);
+        .all(...searchValues);
     },
     findByIdAccessible(id, role) {
       if (role === "Admin") {

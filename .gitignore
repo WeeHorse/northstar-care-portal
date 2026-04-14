@@ -1,8 +1,9 @@
 # OS files
 .DS_Store
 
-# Uploads
-Backend/uploads/
+# Special - do not version handle uploads (beyond what is already there now)
+uploads/
+
 
 # Logs
 *.log

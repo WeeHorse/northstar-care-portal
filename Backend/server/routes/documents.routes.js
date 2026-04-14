@@ -1,14 +1,12 @@
 import { Router } from "express";
-import fs from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import multer from "multer";
 import { requireRole } from "../middleware/requireRole.js";
 
-export function createDocumentsRouter({ documentsController, authMiddleware }) {
+export function createDocumentsRouter({ documentsController, authMiddleware, storage }) {
   const router = Router();
   const adminOnly = [authMiddleware, requireRole(["Admin"])];
-  const uploadRoot = path.resolve("uploads");
   const allowedMimeTypes = new Set([
     "application/pdf",
     "text/plain",
@@ -41,18 +39,22 @@ export function createDocumentsRouter({ documentsController, authMiddleware }) {
     });
   }
 
-  function persistUpload(req, res, next) {
+  async function persistUpload(req, res, next) {
     if (!req.file) {
       next();
       return;
     }
-    fs.mkdirSync(uploadRoot, { recursive: true });
-    const extension = path.extname(req.file.originalname) || ".bin";
-    const fileName = `${Date.now()}-${randomUUID()}${extension}`;
-    const fullPath = path.join(uploadRoot, fileName);
-    fs.writeFileSync(fullPath, req.file.buffer);
-    req.uploadedFilePath = fullPath;
-    next();
+    try {
+      const extension = path.extname(req.file.originalname) || ".bin";
+      const fileName = `${Date.now()}-${randomUUID()}${extension}`;
+      const result = await storage.saveFile(fileName, req.file.buffer);
+      req.uploadedFilePath = result.path;
+      req.uploadedFileName = result.fileName;
+      next();
+    } catch (err) {
+      console.error("Upload persistence error:", err);
+      res.status(500).json({ error: "Failed to save file" });
+    }
   }
 
   router.get("/", authMiddleware, documentsController.list);
@@ -60,6 +62,7 @@ export function createDocumentsRouter({ documentsController, authMiddleware }) {
   router.post("/", authMiddleware, documentsController.create);
   router.post("/upload", authMiddleware, parseUpload, persistUpload, documentsController.upload);
   router.get("/:id", authMiddleware, documentsController.getById);
+  router.get("/:id/download", authMiddleware, documentsController.download);
   router.patch("/:id/classification", ...adminOnly, documentsController.classify);
 
   return router;

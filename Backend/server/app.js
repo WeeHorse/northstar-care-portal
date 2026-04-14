@@ -37,13 +37,46 @@ import { createProceduresRouter } from "./routes/procedures.routes.js";
 import { createMeetingsRouter } from "./routes/meetings.routes.js";
 import { createAdminRouter } from "./routes/admin.routes.js";
 import { createAssistantRouter } from "./routes/assistant.routes.js";
+import { createStorageClient } from "./storage/FileStorageFactory.js";
+import { resolveRuntimePaths } from "./config/runtimePaths.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_WWWROOT = path.resolve(__dirname, "../wwwroot");
 
-export function createApp({ db, jwtSecret, staticRoot = DEFAULT_WWWROOT }) {
+export function createApp({
+  db,
+  jwtSecret,
+  staticRoot = DEFAULT_WWWROOT,
+  uploadRoot,
+  storageType = "local",
+  azureConnectionString,
+  azureContainerName
+}) {
   const app = express();
   app.use(express.json());
+  const effectiveUploadRoot = uploadRoot || resolveRuntimePaths(process.env).uploadRoot;
+
+  // Initialize storage client
+  let storage;
+  try {
+    storage = createStorageClient({
+      storageType,
+      uploadRoot: effectiveUploadRoot,
+      azureConnectionString,
+      azureContainerName
+    });
+    
+    if (storageType === "azure") {
+      console.log("✓ Azure Blob Storage initialized");
+      console.log(`  Container: ${azureContainerName}`);
+      console.log(`  Connection string: ${azureConnectionString ? "(set)" : "(MISSING - uploads will fail!)"}`);
+    } else {
+      console.log(`✓ Local filesystem storage initialized at: ${effectiveUploadRoot}`);
+    }
+  } catch (err) {
+    console.error("✗ Storage initialization error:", err.message);
+    throw err;
+  }
 
   const authRepository = createAuthRepository(db);
   const authMiddleware = createAuthMiddleware({ jwtSecret, authRepository });
@@ -59,7 +92,7 @@ export function createApp({ db, jwtSecret, staticRoot = DEFAULT_WWWROOT }) {
   const authService = createAuthService({ authRepository, auditRepository, jwtSecret });
   const casesService = createCasesService({ casesRepository, auditRepository });
   const recordsService = createRecordsService({ recordsRepository, auditRepository });
-  const documentsService = createDocumentsService({ documentsRepository, auditRepository });
+  const documentsService = createDocumentsService({ documentsRepository, auditRepository, storage });
   const proceduresService = createProceduresService({ proceduresRepository, auditRepository });
   const meetingsService = createMeetingsService({ meetingsRepository, auditRepository });
   const adminService = createAdminService({ adminRepository, auditRepository });
@@ -73,7 +106,7 @@ export function createApp({ db, jwtSecret, staticRoot = DEFAULT_WWWROOT }) {
   const authController = createAuthController(authService);
   const casesController = createCasesController(casesService);
   const recordsController = createRecordsController(recordsService);
-  const documentsController = createDocumentsController(documentsService);
+  const documentsController = createDocumentsController(documentsService, storage);
   const proceduresController = createProceduresController(proceduresService);
   const meetingsController = createMeetingsController(meetingsService);
   const adminController = createAdminController(adminService);
@@ -83,11 +116,46 @@ export function createApp({ db, jwtSecret, staticRoot = DEFAULT_WWWROOT }) {
   app.use("/api/auth", createAuthRouter({ authController, authMiddleware }));
   app.use("/api/cases", createCasesRouter({ casesController, authMiddleware }));
   app.use("/api/records", createRecordsRouter({ recordsController, authMiddleware }));
-  app.use("/api/documents", createDocumentsRouter({ documentsController, authMiddleware }));
+  app.use("/api/documents", createDocumentsRouter({
+    documentsController,
+    authMiddleware,
+    storage
+  }));
   app.use("/api/procedures", createProceduresRouter({ proceduresController, authMiddleware }));
   app.use("/api/meetings", createMeetingsRouter({ meetingsController, authMiddleware }));
   app.use("/api/admin", createAdminRouter({ adminController, authMiddleware }));
   app.use("/api/assistant", createAssistantRouter({ assistantController, authMiddleware }));
+
+  // Diagnostic endpoint to check storage configuration
+  app.get("/api/diagnostics/storage", (req, res) => {
+    const diagnostics = {
+      storageType: storage.getStorageType(),
+      timestamp: new Date().toISOString(),
+      environment: {
+        STORAGE_TYPE: process.env.STORAGE_TYPE ? "(set)" : "(not set)",
+        AZURE_STORAGE_CONNECTION_STRING: process.env.AZURE_STORAGE_CONNECTION_STRING ? "(set)" : "(not set)",
+        AZURE_STORAGE_CONTAINER_NAME: process.env.AZURE_STORAGE_CONTAINER_NAME || "(not set)",
+        NODE_ENV: process.env.NODE_ENV || "production"
+      }
+    };
+    
+    // Add Azure-specific info if using Azure storage
+    if (storage.getStorageType() === "azure" && typeof storage.getStorageInfo === "function") {
+      try {
+        storage.getStorageInfo().then(info => {
+          diagnostics.azure = info;
+          res.json(diagnostics);
+        }).catch(err => {
+          diagnostics.azure = { error: err.message };
+          res.json(diagnostics);
+        });
+      } catch (err) {
+        res.json(diagnostics);
+      }
+    } else {
+      res.json(diagnostics);
+    }
+  });
 
   const indexPath = path.join(staticRoot, "index.html");
   if (fs.existsSync(indexPath)) {

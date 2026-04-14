@@ -6,12 +6,15 @@ Project scaffold for the Northstar Care Portal simulation.
 
 - Specifications are documented in [Specifications/Northstar Care Portal.md](Specifications/Northstar%20Care%20Portal.md).
 - Interaction YAML catalog is documented in [Specifications/Northstar Care Portal Interactions.md](Specifications/Northstar%20Care%20Portal%20Interactions.md).
+- Azure Storage integration documented in [Specifications/Azure-Storage-Interactions.md](Specifications/Azure-Storage-Interactions.md).
 - Backend MVP baseline is implemented in [Backend](Backend) with auth, cases, records, documents, procedures, meetings, and admin/audit APIs.
 - Auth logout now revokes issued JWT tokens and middleware rejects revoked tokens.
 - Backend and test details are documented in [Documentation/Backend-and-API-Testing.md](Documentation/Backend-and-API-Testing.md).
+- **Azure Blob Storage integration**: Documents can be stored in local filesystem (dev) or Azure Blob Storage (production) via environment-based configuration. Full setup guide in [Documentation/Azure-Blob-Storage-Setup.md](Documentation/Azure-Blob-Storage-Setup.md).
 - Frontend MVP baseline is implemented in [Frontend](Frontend) with authenticated routes, create/edit forms for cases and meetings, and admin controls.
 - Frontend now also includes Assistant flows, document search, admin document classification controls, case detail route views, and meetings day/team filters.
-- Document upload now supports multipart file submission (basic local storage with type/size checks).
+- Document upload now supports multipart file submission with configurable storage backend (local or Azure Blob Storage).
+- Document download functionality added: authenticated users can download uploaded documents via file links with role-based access control and audit logging. Works seamlessly with both storage backends.
 - Meetings create/edit forms use native date-time pickers, and meeting list timestamps are shown in local date-time format.
 - Frontend and test details are documented in [Documentation/Frontend-and-Testing.md](Documentation/Frontend-and-Testing.md).
 - Full user-story coverage matrix is documented in [Documentation/User-Story-Coverage.md](Documentation/User-Story-Coverage.md).
@@ -24,6 +27,36 @@ From [Backend](Backend):
 npm install
 npm run dev
 ```
+
+Backend runtime storage defaults:
+- **Local/dev**: `DB_PATH` defaults to `./northstar.db`, uploads default to `./uploads`. Storage uses local filesystem.
+- **Azure App Service**: When `WEBSITE_SITE_NAME` (or equivalent App Service markers) is present, defaults switch to writable paths:
+	- DB: `/home/data/northstar.db`
+	- Uploads: `/home/site/uploads`
+	- **Storage**: Automatically uses Azure Blob Storage (requires `AZURE_STORAGE_CONNECTION_STRING`)
+
+### Storage Configuration
+
+Document storage can be explicitly configured via environment variables:
+
+```bash
+# Local filesystem storage (default)
+STORAGE_TYPE=local
+
+# Azure Blob Storage
+STORAGE_TYPE=azure
+AZURE_STORAGE_CONNECTION_STRING=DefaultEndpointsProtocol=https;AccountName=...;AccountKey=...
+AZURE_STORAGE_CONTAINER_NAME=documents  # optional, defaults to "documents"
+```
+
+Optional backend environment variables:
+- `DB_PATH` (absolute or relative path to SQLite file)
+- `DOCUMENT_UPLOAD_ROOT` (absolute or relative path to uploaded files directory; local storage only)
+- `STORAGE_TYPE` (`local` or `azure`; auto-detected on Azure AppService)
+- `AZURE_STORAGE_CONNECTION_STRING` (Azure connection string for blob storage)
+- `AZURE_STORAGE_CONTAINER_NAME` (Azure blob container name; defaults to `documents`)
+- `JWT_SECRET` (JWT signing secret)
+- `PORT` (HTTP port; App Service injects this automatically)
 
 ## Test commands
 
@@ -166,6 +199,8 @@ If you want to reset to a fresh demo dataset:
 
 This recreates schema and seed data on startup.
 
+For Azure App Service, reseeding uses the resolved `DB_PATH` location (default `/home/data/northstar.db`) instead of project-relative paths.
+
 Current specification status:
 - Product, scope, roles, user stories, architecture, data model, API contracts, and MVP roadmap are documented in [Specifications/Northstar Care Portal.md](Specifications/Northstar%20Care%20Portal.md).
 - User stories US-01 through US-30 are mapped to compliant YAML Use Case Interaction Specifications in [Specifications/Northstar Care Portal Interactions.md](Specifications/Northstar%20Care%20Portal%20Interactions.md), with an index link from section 4.9 in [Specifications/Northstar Care Portal.md](Specifications/Northstar%20Care%20Portal.md#L219).
@@ -176,14 +211,15 @@ Current implementation progress against user stories:
 
 ## Azure DevOps pipeline
 
-- A CI pipeline is now available at [pipeline.yaml](pipeline.yaml).
+- A CI pipeline is now available at [azure-pipelines.yaml](azure-pipelines.yaml).
 - Trigger: push to `main` only.
 - Order of execution:
 	1. Install backend and frontend dependencies.
 	2. Build frontend into [Backend/wwwroot](Backend/wwwroot).
-	3. Start backend and verify hosted endpoints (`/health` and `/`).
-	4. Run frontend and backend test suites (JUnit output).
-	5. Run dependency scans for backend and frontend using `npm audit`.
-	6. Generate and publish a consolidated CI report summary and artifact.
+	3. Verify that repository is still clean after build (`git status --porcelain` must be empty).
+	4. Start backend and verify hosted endpoints (`/health` and `/`).
+	5. Run frontend and backend test suites (JUnit output).
+	6. Run dependency scans for backend and frontend using `npm audit`.
+	7. Generate and publish a consolidated CI report summary and artifact.
 
 Generated CI artifacts are published from `Testing/reports` as artifact name `ci-report`.

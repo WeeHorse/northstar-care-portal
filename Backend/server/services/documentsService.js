@@ -1,4 +1,4 @@
-export function createDocumentsService({ documentsRepository, auditRepository }) {
+export function createDocumentsService({ documentsRepository, auditRepository, storage }) {
   function parseTags(rawTags) {
     if (!rawTags) return [];
     return String(rawTags)
@@ -20,6 +20,9 @@ export function createDocumentsService({ documentsRepository, auditRepository })
   }
 
   function toDocumentDto(item) {
+    const hasFile = item.storage_path ? true : false;
+    const downloadLink = hasFile ? `/api/documents/${item.id}/download` : null;
+
     return {
       id: item.id,
       title: item.title,
@@ -31,6 +34,7 @@ export function createDocumentsService({ documentsRepository, auditRepository })
       fileMimeType: item.file_mime_type || null,
       fileSizeBytes: item.file_size_bytes ?? null,
       storagePath: item.storage_path || null,
+      downloadLink,
       createdAt: item.created_at,
       updatedAt: item.updated_at
     };
@@ -40,8 +44,8 @@ export function createDocumentsService({ documentsRepository, auditRepository })
     listDocuments(user, filters = {}) {
       return documentsRepository.listAccessible(user.role, filters).map(toDocumentDto);
     },
-    searchDocuments({ user, title, tag, category }) {
-      return documentsRepository.listAccessible(user.role, { title, tag, category }).map(toDocumentDto);
+    searchDocuments({ user, title, description, tag, category, fileName }) {
+      return documentsRepository.listAccessible(user.role, { title, description, tag, category, fileName }).map(toDocumentDto);
     },
     getDocumentById({ id, user }) {
       const item = documentsRepository.findByIdAccessible(id, user.role);
@@ -104,6 +108,44 @@ export function createDocumentsService({ documentsRepository, auditRepository })
         metadataJson: JSON.stringify({ classification })
       });
       return toDocumentDto(updated);
+    },
+    async downloadDocument({ id, user, storage: storageClient }) {
+      const item = documentsRepository.findByIdAccessible(id, user.role);
+      if (!item) {
+        return null;
+      }
+
+      if (!item.storage_path || !item.file_name) {
+        return { noFileAttached: true };
+      }
+
+      // Check file existence using storage client
+      try {
+        const fileExists = await storageClient.fileExists(item.storage_path);
+        if (!fileExists) {
+          return { noFileAttached: true };
+        }
+
+        const fileSize = await storageClient.getFileSize(item.storage_path);
+
+        auditRepository.write({
+          actorUserId: user.id,
+          eventType: "document_download",
+          entityType: "document",
+          entityId: String(item.id),
+          result: "success"
+        });
+
+        return {
+          filePath: item.storage_path,
+          fileName: item.file_name,
+          mimeType: item.file_mime_type,
+          fileSize
+        };
+      } catch (err) {
+        console.error("Error checking file existence:", err);
+        return { noFileAttached: true };
+      }
     }
   };
 }

@@ -48,7 +48,14 @@ describe("documents upload e2e", () => {
         uploadCalled = true;
         return {
           ok: true,
-          json: async () => ({ id: 99, title: "Uploaded Policy", classification: "Internal", category: "policy" })
+          json: async () => ({
+            id: 99,
+            title: "Uploaded Policy",
+            fileName: "policy.txt",
+            classification: "Internal",
+            category: "policy",
+            downloadLink: "/api/documents/99/download"
+          })
         };
       }
       return { ok: true, json: async () => ({ items: [], total: 0 }) };

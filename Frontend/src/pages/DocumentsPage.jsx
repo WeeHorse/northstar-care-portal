@@ -7,7 +7,7 @@ export function DocumentsPage() {
   const { token, user } = useAuth();
   const [items, setItems] = useState([]);
   const [error, setError] = useState("");
-  const [filters, setFilters] = useState({ title: "", tag: "", category: "" });
+  const [filters, setFilters] = useState({ title: "", description: "", tag: "", category: "", fileName: "" });
   const [uploadDraft, setUploadDraft] = useState({
     title: "",
     description: "",
@@ -65,6 +65,27 @@ export function DocumentsPage() {
     }
   }
 
+  async function onDownload(documentId, fileName) {
+    setError("");
+    try {
+      await api.downloadDocument(token, documentId, fileName);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function onClearSearch(event) {
+    event.preventDefault();
+    setError("");
+    setFilters({ title: "", description: "", tag: "", category: "", fileName: "" });
+    try {
+      const result = await api.listDocuments(token);
+      setItems(result.items || []);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   return (
     <div className="admin-stack">
       <form className="card inline-form" onSubmit={onUpload}>
@@ -112,9 +133,12 @@ export function DocumentsPage() {
       <form className="card inline-form" onSubmit={onSearch}>
         <h2>Search Documents</h2>
         <input aria-label="Search title" placeholder="title" value={filters.title} onChange={(event) => setFilters((prev) => ({ ...prev, title: event.target.value }))} />
+        <input placeholder="description" value={filters.description} onChange={(event) => setFilters((prev) => ({ ...prev, description: event.target.value }))} />
         <input placeholder="tag" value={filters.tag} onChange={(event) => setFilters((prev) => ({ ...prev, tag: event.target.value }))} />
         <input placeholder="category" value={filters.category} onChange={(event) => setFilters((prev) => ({ ...prev, category: event.target.value }))} />
+        <input placeholder="file name" value={filters.fileName} onChange={(event) => setFilters((prev) => ({ ...prev, fileName: event.target.value }))} />
         <button type="submit">Search</button>
+        <button type="button" onClick={onClearSearch}>Clear</button>
       </form>
 
       {error ? <p className="error">{error}</p> : null}
@@ -124,9 +148,41 @@ export function DocumentsPage() {
         items={items}
         columns={[
           { key: "id", label: "ID" },
-          { key: "title", label: "Title" },
+          {
+            key: "title",
+            label: "Title",
+            render: (title, item) => (
+              <a href={`/documents/${item.id}`} target="_blank" rel="noopener noreferrer">
+                {title}
+              </a>
+            )
+          },
+          {
+            key: "fileName",
+            label: "File",
+            render: (fileName, item) => fileName ? (
+              <a href={`/documents/${item.id}`} target="_blank" rel="noopener noreferrer">
+                {fileName}
+              </a>
+            ) : "-"
+          },
           { key: "classification", label: "Class" },
-          { key: "category", label: "Category" }
+          { key: "category", label: "Category" },
+          {
+            key: "downloadLink",
+            label: "Download",
+            render: (downloadLink, item) =>
+              item.fileName && downloadLink ? (
+                <button
+                  onClick={() => onDownload(item.id, item.fileName)}
+                  style={{ background: "none", border: "none", color: "inherit", cursor: "pointer", padding: 0 }}
+                >
+                  📥 Download
+                </button>
+              ) : (
+                "-"
+              )
+          }
         ]}
       />
 

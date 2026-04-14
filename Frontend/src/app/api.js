@@ -50,16 +50,20 @@ export const api = {
   listDocuments: (token, filters = {}) => {
     const query = new URLSearchParams();
     if (filters.title) query.set("title", filters.title);
+    if (filters.description) query.set("description", filters.description);
     if (filters.tag) query.set("tag", filters.tag);
     if (filters.category) query.set("category", filters.category);
+    if (filters.fileName) query.set("fileName", filters.fileName);
     const suffix = query.toString() ? `?${query.toString()}` : "";
     return request(`/api/documents${suffix}`, { token });
   },
   searchDocuments: (token, filters = {}) => {
     const query = new URLSearchParams();
     if (filters.title) query.set("title", filters.title);
+    if (filters.description) query.set("description", filters.description);
     if (filters.tag) query.set("tag", filters.tag);
     if (filters.category) query.set("category", filters.category);
+    if (filters.fileName) query.set("fileName", filters.fileName);
     const suffix = query.toString() ? `?${query.toString()}` : "";
     return request(`/api/documents/search${suffix}`, { token });
   },
@@ -76,6 +80,32 @@ export const api = {
   },
   classifyDocument: (token, id, classification) =>
     request(`/api/documents/${id}/classification`, { method: "PATCH", token, body: { classification } }),
+  downloadDocument: async (token, id, fileName) => {
+    const headers = {};
+    if (token) {
+      headers.authorization = `Bearer ${token}`;
+    }
+
+    const response = await fetch(`${API_BASE_URL}/api/documents/${id}/download`, {
+      method: "GET",
+      headers
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: "Download failed" }));
+      throw new Error(error.error || "Download failed");
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName || "document";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  },
   listProcedures: (token) => request("/api/procedures", { token }),
   listMeetings: (token, filters = {}) => {
     const query = new URLSearchParams();

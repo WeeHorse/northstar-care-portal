@@ -68,6 +68,14 @@ Default runtime values:
 - DB_PATH: ./northstar.db
 - JWT_SECRET: northstar-dev-secret
 
+Azure App Service runtime behavior:
+- When App Service environment markers are present (`WEBSITE_SITE_NAME`, `WEBSITE_INSTANCE_ID`, or `WEBSITE_RESOURCE_GROUP`), backend runtime defaults automatically switch to writable storage paths:
+  - DB_PATH default: `/home/data/northstar.db`
+  - DOCUMENT_UPLOAD_ROOT default: `/home/site/uploads`
+- You can override both via environment variables:
+  - `DB_PATH`
+  - `DOCUMENT_UPLOAD_ROOT`
+
 Seeding behavior:
 - On an empty database, backend bootstrap now seeds a richer demo dataset (about 36 rows each for cases, case comments, records, documents, procedures, and meetings; users remain 4 seeded demo accounts).
 
@@ -89,9 +97,9 @@ npm test
 
 ## Current passing suites
 
-- Unit: cases, documents, procedures, meetings, admin, and assistant service behavior
-- API: auth (including logout invalidation), cases, records, documents (including multipart upload + search/classification), procedures, meetings (including day filtering), assistant, and admin/audit flows
-- E2E: auth -> cases flow, auth -> documents -> records flow, auth -> procedures -> meetings flow, auth -> admin -> audit flow, and auth -> assistant flow
+- Unit: cases, documents, procedures, meetings, admin, assistant service behavior, and runtime path resolution for local vs App Service defaults
+- API: auth (including logout invalidation), cases, records, documents (including multipart upload + search/classification), procedures, meetings (including day filtering), assistant, and admin/audit flows; includes regression for configured upload-root persistence
+- E2E: auth -> cases flow, auth -> documents -> records flow, auth -> procedures -> meetings flow, auth -> admin -> audit flow, and auth -> assistant flow; includes configured upload-root persistence assertion
 - API regression: frontend static asset serving and SPA fallback routing
 
 Cross-reference:

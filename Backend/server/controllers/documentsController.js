@@ -1,10 +1,14 @@
-export function createDocumentsController(documentsService) {
+import fs from "node:fs";
+
+export function createDocumentsController(documentsService, storage) {
   return {
     list(req, res) {
       const items = documentsService.listDocuments(req.user, {
         title: req.query.title,
+        description: req.query.description,
         category: req.query.category,
-        tag: req.query.tag
+        tag: req.query.tag,
+        fileName: req.query.fileName
       });
       return res.status(200).json({ items, total: items.length });
     },
@@ -12,8 +16,10 @@ export function createDocumentsController(documentsService) {
       const items = documentsService.searchDocuments({
         user: req.user,
         title: req.query.title,
+        description: req.query.description,
         category: req.query.category,
-        tag: req.query.tag
+        tag: req.query.tag,
+        fileName: req.query.fileName
       });
       return res.status(200).json({ items, total: items.length });
     },
@@ -72,6 +78,52 @@ export function createDocumentsController(documentsService) {
         return res.status(400).json({ error: "Invalid classification" });
       }
       return res.status(200).json(result);
+    },
+    async download(req, res) {
+      const result = await documentsService.downloadDocument({
+        id: Number(req.params.id),
+        user: req.user,
+        storage
+      });
+
+      if (!result) {
+        return res.status(404).json({ error: "Document not found" });
+      }
+      if (result.accessDenied) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      if (result.noFileAttached) {
+        return res.status(404).json({ error: "No file attached to this document" });
+      }
+
+      try {
+        // Check if file exists in storage
+        const fileExists = await storage.fileExists(result.filePath);
+        if (!fileExists) {
+          return res.status(404).json({ error: "File not found in storage" });
+        }
+
+        res.set({
+          "Content-Type": result.mimeType || "application/octet-stream",
+          "Content-Disposition": `attachment; filename="${result.fileName}"`,
+          "Content-Length": result.fileSize
+        });
+
+        const fileStream = await storage.createReadStream(result.filePath);
+        fileStream.on("error", (err) => {
+          console.error(`Download error for ${result.filePath}:`, err);
+          if (!res.headersSent) {
+            res.status(500).json({ error: "Error reading file" });
+          }
+        });
+
+        return fileStream.pipe(res);
+      } catch (err) {
+        console.error("Download error:", err);
+        if (!res.headersSent) {
+          res.status(500).json({ error: "Failed to retrieve file" });
+        }
+      }
     }
   };
 }
