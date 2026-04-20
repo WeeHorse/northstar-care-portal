@@ -53,9 +53,22 @@ describe("api client", () => {
       };
     });
 
-    await api.listAuditLogs("token", { eventType: "login_attempt", result: "success" });
-    expect(seenUrl).toContain("eventType=login_attempt");
+    await api.listAuditLogs("token", {
+      eventType: "assistant_query",
+      result: "success",
+      createdFrom: "2026-04-21T10:00",
+      createdTo: "2026-04-21T11:00",
+      user: "anna.support",
+      role: "SupportAgent",
+      search: "unsafe"
+    });
+    expect(seenUrl).toContain("eventType=assistant_query");
     expect(seenUrl).toContain("result=success");
+    expect(seenUrl).toContain("createdFrom=2026-04-21T10%3A00");
+    expect(seenUrl).toContain("createdTo=2026-04-21T11%3A00");
+    expect(seenUrl).toContain("user=anna.support");
+    expect(seenUrl).toContain("role=SupportAgent");
+    expect(seenUrl).toContain("search=unsafe");
   });
 
   it("uses same-origin API path by default", async () => {
@@ -118,19 +131,19 @@ describe("api client", () => {
       calls.push({ url: String(url), method: options.method || "GET" });
       return {
         ok: true,
-        json: async () => ({ items: [], total: 0, mode: "disabled", answerId: "ans-1", sources: [] })
+        json: async () => ({ items: [], total: 0, mode: "safe", answerId: "ans-1", sources: [] })
       };
     });
 
-    await api.askAssistant("token", "How do we triage?");
+    await api.askAssistant("token", { question: "How do we triage?" });
     await api.getAssistantSources("token", "ans-1");
-    await api.getAssistantRoleAwareMode("token");
-    await api.setAssistantRoleAwareMode("token", "enabled");
+    await api.getAssistantMode("token");
+    await api.setAssistantMode("token", "unsafe");
     await api.listAssistantMismatches("token");
 
-    expect(calls.some((call) => call.url.includes("/api/assistant/ask") && call.method === "POST")).toBe(true);
+    expect(calls.some((call) => call.url.includes("/api/assistant/chat") && call.method === "POST")).toBe(true);
     expect(calls.some((call) => call.url.includes("/api/assistant/sources/ans-1"))).toBe(true);
-    expect(calls.some((call) => call.url.includes("/api/assistant/settings/role-aware-mode") && call.method === "PATCH")).toBe(true);
+    expect(calls.some((call) => call.url.includes("/api/assistant/settings/mode") && call.method === "PATCH")).toBe(true);
     expect(calls.some((call) => call.url.includes("/api/assistant/mismatches"))).toBe(true);
   });
 

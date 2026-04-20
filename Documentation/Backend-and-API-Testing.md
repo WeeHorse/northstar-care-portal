@@ -53,6 +53,8 @@ Backend MVP baseline is implemented in [Backend/server](../Backend/server) with:
 - Admin-only role guard for admin and audit reads
 - Audit logging for login/logout and domain read/write events, including denied case/meeting access paths
 - Document upload validation (basic): allowed mime types and max file size checks
+- Structured API request logging middleware for all `/api/*` routes with request start/completion/abort/error events
+- Request correlation via `x-request-id` response header (echoed when provided by client, generated when absent)
 
 ## Run backend locally
 
@@ -99,6 +101,7 @@ npm test
 
 - Unit: cases, documents, procedures, meetings, admin, assistant service behavior, and runtime path resolution for local vs App Service defaults
 - API: auth (including logout invalidation), cases, records, documents (including multipart upload + search/classification), procedures, meetings (including day filtering), assistant, and admin/audit flows; includes regression for configured upload-root persistence
+- API logging regression: validates `x-request-id` correlation behavior on authenticated and unauthenticated endpoints
 - E2E: auth -> cases flow, auth -> documents -> records flow, auth -> procedures -> meetings flow, auth -> admin -> audit flow, and auth -> assistant flow; includes configured upload-root persistence assertion
 - API regression: frontend static asset serving and SPA fallback routing
 

@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { createAuthMiddleware } from "./middleware/auth.js";
+import { apiLogger } from "./middleware/apiLogger.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { createAuthRepository } from "./repositories/authRepository.js";
 import { createCasesRepository } from "./repositories/casesRepository.js";
@@ -39,6 +40,7 @@ import { createAdminRouter } from "./routes/admin.routes.js";
 import { createAssistantRouter } from "./routes/assistant.routes.js";
 import { createStorageClient } from "./storage/FileStorageFactory.js";
 import { resolveRuntimePaths } from "./config/runtimePaths.js";
+import { logger } from "./utils/logger.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_WWWROOT = path.resolve(__dirname, "../wwwroot");
@@ -54,7 +56,9 @@ export function createApp({
 }) {
   const app = express();
   app.use(express.json());
+  app.use(apiLogger);
   const effectiveUploadRoot = uploadRoot || resolveRuntimePaths(process.env).uploadRoot;
+
 
   // Initialize storage client
   let storage;
@@ -65,16 +69,17 @@ export function createApp({
       azureConnectionString,
       azureContainerName
     });
-    
+
     if (storageType === "azure") {
-      console.log("✓ Azure Blob Storage initialized");
-      console.log(`  Container: ${azureContainerName}`);
-      console.log(`  Connection string: ${azureConnectionString ? "(set)" : "(MISSING - uploads will fail!)"}`);
+      logger.info("Azure Blob storage initialized", {
+        container: azureContainerName,
+        connectionStringConfigured: Boolean(azureConnectionString)
+      });
     } else {
-      console.log(`✓ Local filesystem storage initialized at: ${effectiveUploadRoot}`);
+      logger.info("Local file storage initialized", { uploadRoot: effectiveUploadRoot });
     }
   } catch (err) {
-    console.error("✗ Storage initialization error:", err.message);
+    logger.error("Storage initialization failed", { error: err.message });
     throw err;
   }
 
@@ -138,7 +143,7 @@ export function createApp({
         NODE_ENV: process.env.NODE_ENV || "production"
       }
     };
-    
+
     // Add Azure-specific info if using Azure storage
     if (storage.getStorageType() === "azure" && typeof storage.getStorageInfo === "function") {
       try {

@@ -1,20 +1,34 @@
+import "dotenv/config";
+import appInsights from "applicationinsights";
 import { createDb } from "./db/connection.js";
 import { initDb } from "./db/initDb.js";
 import { createApp } from "./app.js";
 import { resolveRuntimePaths } from "./config/runtimePaths.js";
+import { logger, setAppInsightsClient } from "./utils/logger.js";
+
+const AI_CONNECTION_STRING = process.env.APPLICATIONINSIGHTS_CONNECTION_STRING;
+if (AI_CONNECTION_STRING) {
+  appInsights
+    .setup(AI_CONNECTION_STRING)
+    .setAutoCollectRequests(true)
+    .setAutoCollectExceptions(true)
+    .setAutoCollectDependencies(true)
+    .setAutoCollectConsole(false)
+    .start();
+  setAppInsightsClient(appInsights.defaultClient);
+  logger.info("Azure Application Insights initialized", { connectionStringConfigured: true });
+}
 
 const PORT = Number(process.env.PORT || 3001);
 const JWT_SECRET = process.env.JWT_SECRET || "northstar-dev-secret";
 const { dbPath, uploadRoot, storageType, azureConnectionString, azureContainerName } = resolveRuntimePaths(process.env);
 
-// Diagnostic logging for storage configuration
-console.log("=== Storage Configuration Diagnostic ===");
-console.log(`STORAGE_TYPE env var: ${process.env.STORAGE_TYPE || "(not set - defaulting to 'local')"}`);
-console.log(`AZURE_STORAGE_CONNECTION_STRING: ${process.env.AZURE_STORAGE_CONNECTION_STRING ? "(set)" : "(not set)"}`);
-console.log(`AZURE_STORAGE_CONTAINER_NAME: ${process.env.AZURE_STORAGE_CONTAINER_NAME || "(not set - defaulting to 'documents')"}`);
-console.log(`Resolved storageType: ${storageType}`);
-console.log(`Azure Container Name: ${azureContainerName}`);
-console.log("========================================");
+logger.info("Storage configuration resolved", {
+  storageType,
+  azureContainerName: azureContainerName || "(not set - defaulting to 'documents')",
+  azureConnectionStringConfigured: Boolean(process.env.AZURE_STORAGE_CONNECTION_STRING),
+  storagTypeSource: process.env.STORAGE_TYPE ? "env" : "default"
+});
 
 const db = createDb(dbPath);
 initDb(db, { uploadRoot });
@@ -29,7 +43,10 @@ const app = createApp({
 });
 
 app.listen(PORT, () => {
-  console.log(`Northstar backend listening on port ${PORT}`);
-  console.log(`Northstar storage paths: db=${dbPath}, uploads=${uploadRoot}`);
-  console.log(`Storage configuration: ${storageType === "azure" ? "✓ AZURE BLOB STORAGE" : "LOCAL FILESYSTEM"}`);
+  logger.info("Northstar backend started", {
+    port: PORT,
+    dbPath,
+    uploadRoot,
+    storageType
+  });
 });

@@ -33,11 +33,11 @@ Legend:
 | US-20 Visa bokningar | Created | Implemented | Meeting list by user scope exists in frontend and backend. |
 | US-21 Skapa bokning | Created | Implemented | Meeting create flow is implemented in UI and API with tests. |
 | US-22 Filtrera bokningar | Created | Implemented | Meetings filtering now supports both team and day in API and UI. |
-| US-23 Fraga assistenten | Created | Implemented | Assistant ask endpoint and frontend page are implemented. |
-| US-24 Visa kallor | Created | Implemented | Assistant source retrieval endpoint and UI rendering are implemented. |
-| US-25 Riskflagga | Created | Implemented | Permission mismatch flags are produced and surfaced to admin. |
-| US-26 Begransa efter roll | Created | Implemented | Admin role-aware assistant mode toggle is implemented and persisted. |
-| US-27 Auditlogg | Created | Implemented | Admin audit listing/filtering is implemented and tested. |
+| US-23 Fraga assistenten | Created | Implemented | Care Assistant chat flow is implemented with SAFE/UNSAFE behavior, prompt-injection detection, and assistant security logging. |
+| US-24 Visa kallor | Created | Implemented | Assistant source retrieval endpoint and UI rendering are implemented, including stored answer metadata. |
+| US-25 Riskflagga | Created | Implemented | Permission mismatch flags and prompt-injection-related assistant events are produced and surfaced in admin investigations. |
+| US-26 Begransa efter roll | Created | Implemented | Admin assistant lab mode toggle is implemented and persisted; SAFE mode enforces role-aware filtering and UNSAFE mode supports the teaching-lab leakage path. |
+| US-27 Auditlogg | Created | Implemented | Admin audit listing/filtering is implemented and tested, including assistant-specific filters, parsed diagnostics, and expandable metadata inspection. |
 | US-28 Se atkomstfel | Created | Partial | Denied events exist for selected flows; broader denied-event coverage is limited. |
 | US-29 Hantera roller | Created | Implemented | Admin role assignment change flow is implemented and tested. |
 | US-30 Demonstrera felkonfiguration | Created | Implemented | Security mode toggle (secure/misconfigured) is implemented and tested. |
@@ -49,3 +49,12 @@ Partial:
 
 Missing:
 - None
+
+## Assistant audit note
+
+The interaction catalog now also includes assistant-specific admin investigation sub-interactions beyond the original US-01 to US-30 matrix:
+
+- US-26a Admin filters assistant security audit events
+- US-26b Admin inspects assistant audit metadata
+
+Those interactions are implemented through the existing admin audit flow and are covered by the current admin/audit implementation and tests.

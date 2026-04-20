@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { logger } from "../utils/logger.js";
 
 export function createDocumentsController(documentsService, storage) {
   return {
@@ -111,7 +112,12 @@ export function createDocumentsController(documentsService, storage) {
 
         const fileStream = await storage.createReadStream(result.filePath);
         fileStream.on("error", (err) => {
-          console.error(`Download error for ${result.filePath}:`, err);
+          logger.error("Document download stream failed", {
+            requestId: req.requestId,
+            path: result.filePath,
+            documentId: Number(req.params.id),
+            error: err.message
+          });
           if (!res.headersSent) {
             res.status(500).json({ error: "Error reading file" });
           }
@@ -119,7 +125,11 @@ export function createDocumentsController(documentsService, storage) {
 
         return fileStream.pipe(res);
       } catch (err) {
-        console.error("Download error:", err);
+        logger.error("Document download failed", {
+          requestId: req.requestId,
+          documentId: Number(req.params.id),
+          error: err.message
+        });
         if (!res.headersSent) {
           res.status(500).json({ error: "Failed to retrieve file" });
         }

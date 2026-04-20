@@ -38,6 +38,7 @@ describe("E2E auth to case flow", () => {
       body: JSON.stringify({ username: "adam.admin", password: "secret" })
     });
     expect(loginRes.status).toBe(200);
+    expect(loginRes.headers.get("x-request-id")).toBeTruthy();
     const loginBody = await loginRes.json();
 
     const createRes = await fetch(`${baseUrl}/api/cases`, {

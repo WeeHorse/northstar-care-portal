@@ -4,6 +4,7 @@ import { Readable } from "stream";
 /**
  * Azure Blob Storage adapter for document uploads.
  * Stores files in Azure Blob Storage containers.
+ * Cool stuff
  */
 export class AzureBlobStorage {
   constructor(connectionString, containerName = "documents") {

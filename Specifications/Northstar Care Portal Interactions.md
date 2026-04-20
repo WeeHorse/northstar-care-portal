@@ -29,10 +29,12 @@ Nedan är en YAML-specifikation per user story, enligt kraven i `.github/copilot
 | Meetings | US-20 User views upcoming bookings | listUpcomingMeetings |
 | Meetings | US-21 Support agent creates booking | createMeeting |
 | Meetings | US-22 Manager filters bookings by team or day | listTeamMeetings |
-| AI Assistant | US-23 User asks assistant | answerAssistantQuery |
+| AI Assistant | US-23 User sends a care assistant chat message | handleAssistantChat |
 | AI Assistant | US-24 User sees assistant sources | getAssistantAnswerSources |
 | AI Assistant | US-25 Admin sees permission mismatch flags | listAssistantPermissionMismatchEvents |
-| AI Assistant | US-26 Admin enables role-aware assistant mode | setAssistantRoleAwareMode |
+| AI Assistant | US-26 Admin changes assistant lab mode | setAssistantMode |
+| AI Assistant | US-26a Admin filters assistant security audit events | listAssistantAuditEvents |
+| AI Assistant | US-26b Admin inspects assistant audit metadata | inspectAssistantAuditEvent |
 | Audit and Security | US-27 Admin views audit log | listAuditEvents |
 | Audit and Security | US-28 Admin views denied access events | listDeniedAccessEvents |
 | Audit and Security | US-29 Admin changes user role | changeUserRole |
@@ -832,38 +834,41 @@ shared_functions:
 
 ```yaml
 use_case: "AI Assistant"
-interaction: "US-23 User asks assistant"
+interaction: "US-23 User sends a care assistant chat message"
 
 request_graph:
-  - function: "postAssistantQueryEndpoint"
+  - function: "postAssistantChatEndpoint"
     layer: "boundary"
-    responsibility: "Receive assistant query request"
-  - function: "mapAssistantQueryRequest"
+    responsibility: "Receive authenticated assistant chat request"
+  - function: "mapAssistantChatRequest"
     layer: "utility"
-    responsibility: "Map query payload to assistant command"
-  - function: "answerAssistantQuery"
+    responsibility: "Map chat payload and user context to an assistant command"
+  - function: "handleAssistantChat"
     layer: "core"
-    responsibility: "Generate assistant answer from internal corpus"
+    responsibility: "Generate a care assistant reply for the current conversation"
 
 core:
-  function: "answerAssistantQuery"
-  responsibility: "Generate assistant answer from internal corpus"
+  function: "handleAssistantChat"
+  responsibility: "Generate a care assistant reply for the current conversation"
   delegates:
-    - "searchAssistantSources"
-    - "composeAssistantAnswer"
-    - "persistAssistantQueryLog"
+    - "detectPromptInjectionPatterns"
+    - "retrieveAssistantContext"
+    - "buildAssistantPrompt"
+    - "generateAssistantReply"
+    - "writeAssistantSecurityLogs"
 
 response_graph:
-  - function: "mapAssistantAnswerResult"
+  - function: "mapAssistantChatResult"
     layer: "utility"
-    responsibility: "Map assistant answer to response DTO"
-  - function: "sendAssistantAnswerResponse"
+    responsibility: "Map assistant result and diagnostics to a response DTO"
+  - function: "sendAssistantChatResponse"
     layer: "boundary"
-    responsibility: "Return assistant answer"
+    responsibility: "Return assistant message, sources, and security details"
 
 shared_functions:
-  - "mapAssistantQueryRequest"
-  - "mapAssistantAnswerResult"
+  - "mapAssistantChatRequest"
+  - "mapAssistantChatResult"
+  - "detectPromptInjectionPatterns"
 ```
 
 ```yaml
@@ -873,33 +878,33 @@ interaction: "US-24 User sees assistant sources"
 request_graph:
   - function: "getAssistantSourcesEndpoint"
     layer: "boundary"
-    responsibility: "Receive source list request for assistant answer"
+    responsibility: "Receive request for stored assistant answer sources"
   - function: "mapAssistantSourceRequest"
     layer: "utility"
-    responsibility: "Map answer identifier to source query"
+    responsibility: "Map answer identifier to a source lookup command"
   - function: "getAssistantAnswerSources"
     layer: "core"
-    responsibility: "Load sources used for assistant answer"
+    responsibility: "Load the stored source set and security metadata for an assistant answer"
 
 core:
   function: "getAssistantAnswerSources"
-  responsibility: "Load sources used for assistant answer"
+  responsibility: "Load the stored source set and security metadata for an assistant answer"
   delegates:
-    - "loadAssistantAnswerById"
-    - "resolveAssistantSourceDocuments"
-    - "filterSourceMetadataForUser"
+    - "loadAssistantAnswerEnvelope"
+    - "filterVisibleAssistantSources"
 
 response_graph:
-  - function: "mapAssistantSourcesResult"
+  - function: "mapAssistantSourceResult"
     layer: "utility"
-    responsibility: "Map assistant sources to response DTO"
-  - function: "sendAssistantSourcesResponse"
+    responsibility: "Map stored sources to response DTO"
+  - function: "sendAssistantSourceResponse"
     layer: "boundary"
-    responsibility: "Return assistant source list"
+    responsibility: "Return visible sources and diagnostics"
 
 shared_functions:
   - "mapAssistantSourceRequest"
-  - "mapAssistantSourcesResult"
+  - "mapAssistantSourceResult"
+  - "filterVisibleAssistantSources"
 ```
 
 ```yaml
@@ -940,38 +945,111 @@ shared_functions:
 
 ```yaml
 use_case: "AI Assistant"
-interaction: "US-26 Admin enables role-aware assistant mode"
+interaction: "US-26 Admin changes assistant lab mode"
 
 request_graph:
   - function: "patchAssistantModeEndpoint"
     layer: "boundary"
-    responsibility: "Receive assistant security mode update request"
-  - function: "mapAssistantModeRequest"
+    responsibility: "Receive assistant mode change request"
+  - function: "mapAssistantModeUpdateRequest"
     layer: "utility"
-    responsibility: "Map payload to assistant mode command"
-  - function: "setAssistantRoleAwareMode"
+    responsibility: "Validate requested SAFE or UNSAFE mode"
+  - function: "setAssistantMode"
     layer: "core"
-    responsibility: "Set assistant retrieval mode by role policy"
+    responsibility: "Persist the requested assistant lab mode and audit the change"
 
 core:
-  function: "setAssistantRoleAwareMode"
-  responsibility: "Set assistant retrieval mode by role policy"
+  function: "setAssistantMode"
+  responsibility: "Persist the requested assistant lab mode and audit the change"
   delegates:
-    - "validateAdminAccess"
-    - "persistAssistantSecurityMode"
-    - "writeSecurityModeAuditLog"
+    - "writeAssistantModeSetting"
+    - "writeAssistantModeChangeLog"
 
 response_graph:
-  - function: "mapAssistantModeResult"
+  - function: "mapAssistantModeUpdateResult"
     layer: "utility"
-    responsibility: "Map assistant mode to response DTO"
-  - function: "sendAssistantModeResponse"
+    responsibility: "Map updated mode to response DTO"
+  - function: "sendAssistantModeUpdateResponse"
     layer: "boundary"
     responsibility: "Return updated assistant mode"
 
 shared_functions:
-  - "mapAssistantModeRequest"
-  - "mapAssistantModeResult"
+  - "mapAssistantModeUpdateRequest"
+  - "mapAssistantModeUpdateResult"
+```
+
+```yaml
+use_case: "AI Assistant"
+interaction: "US-26a Admin filters assistant security audit events"
+
+request_graph:
+  - function: "getAssistantAuditEventsEndpoint"
+    layer: "boundary"
+    responsibility: "Receive admin audit investigation request"
+  - function: "mapAssistantAuditFilterRequest"
+    layer: "utility"
+    responsibility: "Map event, date range, actor, role, and text filters to audit criteria"
+  - function: "listAssistantAuditEvents"
+    layer: "core"
+    responsibility: "Return filtered assistant-related audit events for investigation"
+
+core:
+  function: "listAssistantAuditEvents"
+  responsibility: "Return filtered assistant-related audit events for investigation"
+  delegates:
+    - "queryAuditLogStore"
+    - "parseAuditMetadata"
+    - "buildAssistantDiagnostics"
+
+response_graph:
+  - function: "mapAssistantAuditListResult"
+    layer: "utility"
+    responsibility: "Map audit rows and assistant diagnostics to response DTOs"
+  - function: "sendAssistantAuditListResponse"
+    layer: "boundary"
+    responsibility: "Return filtered assistant audit events"
+
+shared_functions:
+  - "mapAssistantAuditFilterRequest"
+  - "mapAssistantAuditListResult"
+  - "buildAssistantDiagnostics"
+```
+
+```yaml
+use_case: "AI Assistant"
+interaction: "US-26b Admin inspects assistant audit metadata"
+
+request_graph:
+  - function: "expandAssistantAuditEventRow"
+    layer: "boundary"
+    responsibility: "Receive UI intent to inspect a specific audit event"
+  - function: "mapAssistantAuditInspection"
+    layer: "utility"
+    responsibility: "Prepare generic audit fields and assistant-specific diagnostics for display"
+  - function: "inspectAssistantAuditEvent"
+    layer: "core"
+    responsibility: "Assemble full assistant audit event details for investigation"
+
+core:
+  function: "inspectAssistantAuditEvent"
+  responsibility: "Assemble full assistant audit event details for investigation"
+  delegates:
+    - "separateGenericAuditFields"
+    - "extractAssistantDiagnostics"
+    - "formatStructuredMetadata"
+
+response_graph:
+  - function: "mapAssistantAuditInspectionResult"
+    layer: "utility"
+    responsibility: "Map full audit event details to expandable UI state"
+  - function: "renderAssistantAuditInspection"
+    layer: "boundary"
+    responsibility: "Display generic audit data, assistant diagnostics, and raw structured metadata"
+
+shared_functions:
+  - "mapAssistantAuditInspection"
+  - "mapAssistantAuditInspectionResult"
+  - "extractAssistantDiagnostics"
 ```
 
 ```yaml

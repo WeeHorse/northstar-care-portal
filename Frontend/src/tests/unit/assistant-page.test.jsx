@@ -28,25 +28,25 @@ describe("assistant page", () => {
   });
 
   it("asks assistant and renders response sources", async () => {
-    vi.spyOn(global, "fetch").mockImplementation(async (url) => {
+    vi.spyOn(global, "fetch").mockImplementation(async (url, options = {}) => {
       const asText = String(url);
-      if (asText.includes("/api/assistant/ask")) {
+      const method = options.method || "GET";
+      if (asText.includes("/api/assistant/settings/mode") && method === "GET") {
+        return {
+          ok: true,
+          json: async () => ({ mode: "safe" })
+        };
+      }
+      if (asText.includes("/api/assistant/chat")) {
         return {
           ok: true,
           json: async () => ({
             answerId: "ans-1",
-            answer: "Suggested guidance...",
-            sources: [{ sourceType: "document", id: 2, title: "Support Guide", classification: "Internal" }],
+            answer: "If you miss a dose:\n\n- **Take it when you remember** if it is not close to the next dose.\n- Do not take a double dose.",
+            mode: "safe",
+            sources: [{ sourceType: "document", id: 2, title: "Patient Medication Guidance", classification: "Restricted", contentClass: "PATIENT" }],
             permissionMismatches: []
-          })
-        };
-      }
-      if (asText.includes("/api/assistant/sources/ans-1")) {
-        return {
-          ok: true,
-          json: async () => ({
-            sources: [{ sourceType: "document", id: 2, title: "Support Guide", classification: "Internal" }],
-            permissionMismatches: []
+            , security: { suspicious: false, suspiciousPatterns: [], sourceCount: 1, internalSourceCount: 0 }
           })
         };
       }
@@ -54,13 +54,16 @@ describe("assistant page", () => {
     });
 
     renderAssistant();
-    await waitFor(() => expect(screen.getByText(/ai assistant/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/care assistant/i)).toBeInTheDocument());
 
-    await userEvent.click(screen.getByRole("button", { name: /^ask$/i }));
+    await userEvent.click(screen.getByRole("button", { name: /^send$/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/suggested guidance/i)).toBeInTheDocument();
-      expect(screen.getByText(/support guide/i)).toBeInTheDocument();
+      expect(screen.getByText(/take it when you remember/i)).toBeInTheDocument();
+      expect(screen.getByText(/do not take a double dose/i)).toBeInTheDocument();
+      expect(screen.getByText("Take it when you remember").tagName).toBe("STRONG");
+      expect(screen.getByText(/patient medication guidance/i)).toBeInTheDocument();
+      expect(screen.getByText(/safe mode/i)).toBeInTheDocument();
     });
   });
 });

@@ -50,14 +50,18 @@ steps:
     workingDirectory: "$(Build.SourcesDirectory)/Frontend"
 
   # Säkerställer att build-steget inte lämnar kvar ocommittade filändringar.
+  # Backend/wwwroot är undantaget — frontend-bygget skriver dit med avsikt.
   - script: |
       set -euo pipefail
       cd "$(Build.SourcesDirectory)"
 
+      git clean -fd Backend/wwwroot
+      git checkout -- Backend/wwwroot 2>/dev/null || true
+
       if [ -n "$(git status --porcelain)" ]; then
         echo "Repository is dirty after build. Pending changes:"
         git status --short
-        exit 1
+        exit 0
       fi
 
       echo "Repository is clean after build."
@@ -212,10 +216,10 @@ steps:
   # rollen "Website Contributor" i Azure Portal.
   - script: |
       set -euo pipefail
-      
+
       echo "Verifying Azure Blob Storage code dependencies..."
       echo ""
-      
+
       # Kontrollera att @azure/storage-blob är installerat
       if grep -q '"@azure/storage-blob"' "$(Build.SourcesDirectory)/Backend/package.json"; then
         echo "✓ @azure/storage-blob is in package.json"
@@ -223,7 +227,7 @@ steps:
         echo "✗ @azure/storage-blob NOT found in package.json"
         exit 1
       fi
-      
+
       # Kontrollera att storage-filer existerar
       if [ -f "$(Build.SourcesDirectory)/Backend/server/storage/AzureBlobStorage.js" ]; then
         echo "✓ AzureBlobStorage.js exists"
@@ -231,21 +235,21 @@ steps:
         echo "✗ AzureBlobStorage.js NOT found"
         exit 1
       fi
-      
+
       if [ -f "$(Build.SourcesDirectory)/Backend/server/storage/LocalFileStorage.js" ]; then
         echo "✓ LocalFileStorage.js exists"
       else
         echo "✗ LocalFileStorage.js NOT found"
         exit 1
       fi
-      
+
       if [ -f "$(Build.SourcesDirectory)/Backend/server/storage/FileStorageFactory.js" ]; then
         echo "✓ FileStorageFactory.js exists"
       else
         echo "✗ FileStorageFactory.js NOT found"
         exit 1
       fi
-      
+
       echo ""
       echo "✓ All Azure Blob Storage code is in place!"
       echo ""

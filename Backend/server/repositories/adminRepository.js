@@ -40,11 +40,24 @@ export function createAdminRepository(db) {
       ).run(mode, now);
       return this.getSecurityMode();
     },
+    getAssistantMode() {
+      const row = db.prepare("SELECT value FROM system_settings WHERE key = 'assistant_mode'").get();
+      return row?.value === "unsafe" ? "unsafe" : "safe";
+    },
+    setAssistantMode(mode) {
+      const now = new Date().toISOString();
+      db.prepare(
+        `INSERT INTO system_settings (key, value, updated_at)
+         VALUES ('assistant_mode', ?, ?)
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`
+      ).run(mode, now);
+      return this.getAssistantMode();
+    },
     getAssistantRoleAwareMode() {
-      const row = db.prepare("SELECT value FROM system_settings WHERE key = 'assistant_role_aware_mode'").get();
-      return row?.value === "enabled" ? "enabled" : "disabled";
+      return this.getAssistantMode() === "safe" ? "enabled" : "disabled";
     },
     setAssistantRoleAwareMode(mode) {
+      this.setAssistantMode(mode === "enabled" ? "safe" : "unsafe");
       const now = new Date().toISOString();
       db.prepare(
         `INSERT INTO system_settings (key, value, updated_at)

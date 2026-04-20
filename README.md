@@ -12,11 +12,14 @@ Project scaffold for the Northstar Care Portal simulation.
 - Backend and test details are documented in [Documentation/Backend-and-API-Testing.md](Documentation/Backend-and-API-Testing.md).
 - **Azure Blob Storage integration**: Documents can be stored in local filesystem (dev) or Azure Blob Storage (production) via environment-based configuration. Full setup guide in [Documentation/Azure-Blob-Storage-Setup.md](Documentation/Azure-Blob-Storage-Setup.md).
 - Frontend MVP baseline is implemented in [Frontend](Frontend) with authenticated routes, create/edit forms for cases and meetings, and admin controls.
-- Frontend now also includes Assistant flows, document search, admin document classification controls, case detail route views, and meetings day/team filters.
+- Frontend now also includes Care Assistant chat flows, document search, admin document classification controls, case detail route views, and meetings day/team filters.
 - Document upload now supports multipart file submission with configurable storage backend (local or Azure Blob Storage).
 - Document download functionality added: authenticated users can download uploaded documents via file links with role-based access control and audit logging. Works seamlessly with both storage backends.
+- API endpoints now emit structured ILogger-style logs (request start/completion/error) and include `x-request-id` correlation headers for traceability across backend diagnostics.
 - Meetings create/edit forms use native date-time pickers, and meeting list timestamps are shown in local date-time format.
+- Assistant lab now supports SAFE and UNSAFE modes, role-aware treatment and medication guidance retrieval, prompt injection detection heuristics, structured assistant security audit events, chat-level source diagnostics, and optional Azure OpenAI Responses API integration.
 - Frontend and test details are documented in [Documentation/Frontend-and-Testing.md](Documentation/Frontend-and-Testing.md).
+- Assistant lab details are documented in [Documentation/AI-Assistant-Lab.md](Documentation/AI-Assistant-Lab.md).
 - Full user-story coverage matrix is documented in [Documentation/User-Story-Coverage.md](Documentation/User-Story-Coverage.md).
 
 ## Backend quick start
@@ -27,6 +30,8 @@ From [Backend](Backend):
 npm install
 npm run dev
 ```
+
+Local backend env files are now supported through `dotenv`. For local development you can create `Backend/.env` using the keys shown in [Backend/.env.example](Backend/.env.example).
 
 Backend runtime storage defaults:
 - **Local/dev**: `DB_PATH` defaults to `./northstar.db`, uploads default to `./uploads`. Storage uses local filesystem.
@@ -55,8 +60,23 @@ Optional backend environment variables:
 - `STORAGE_TYPE` (`local` or `azure`; auto-detected on Azure AppService)
 - `AZURE_STORAGE_CONNECTION_STRING` (Azure connection string for blob storage)
 - `AZURE_STORAGE_CONTAINER_NAME` (Azure blob container name; defaults to `documents`)
+- `AZURE_OPENAI_ENDPOINT` (Azure OpenAI resource base URL, for example `https://your-resource.cognitiveservices.azure.com`)
+- `AZURE_OPENAI_API_KEY` (Azure OpenAI API key)
+- `AZURE_OPENAI_DEPLOYMENT` (Azure OpenAI deployment name, for example `gpt-5.4-mini`)
+- `AZURE_OPENAI_API_VERSION` (Azure OpenAI Responses API version, for example `2025-04-01-preview`)
 - `JWT_SECRET` (JWT signing secret)
 - `PORT` (HTTP port; App Service injects this automatically)
+
+Azure OpenAI quick start for the assistant lab:
+
+```bash
+cp .env.example .env
+npm run dev
+```
+
+When these variables are set in `Backend/.env`, shell env, or Azure App Service configuration, the Care Assistant uses Azure OpenAI Responses API. When they are absent, the backend falls back to the local mock assistant generator so the teaching lab still runs offline.
+
+Azure OpenAI hosting guidance for App Service and Key Vault is documented in [Documentation/Azure-OpenAI-Setup.md](Documentation/Azure-OpenAI-Setup.md).
 
 ## Test commands
 
@@ -167,6 +187,7 @@ Use this as a quick presenter flow.
 6. Open Records and note that support role sees restricted metadata.
 7. Open Meetings, create a meeting entry, then apply day/team filters.
 8. Open Assistant and ask an operations question, then inspect source list.
+9. Switch between SAFE and UNSAFE assistant modes as admin to compare blocked prompts, leaked internal guidance, and audit traces.
 
 ### Clinician flow (clara.clinician)
 
@@ -181,8 +202,9 @@ Use this as a quick presenter flow.
 3. Change a user role from the role assignment controls.
 4. Classify a document as Restricted from Documents page.
 5. Toggle Assistant Guard Mode (enabled/disabled).
-6. Ask a question from Assistant page and compare mismatch behavior by guard mode.
-7. Apply audit filters (eventType/result) and show security-relevant events.
+6. Toggle Assistant Lab Mode (safe <-> unsafe).
+7. Ask a question from Assistant page and compare SAFE refusals against UNSAFE leakage and mismatch behavior.
+8. Apply audit filters (eventType/result) and show security-relevant events.
 
 ### Manager flow (optional, mikael.manager)
 
@@ -206,7 +228,7 @@ Current specification status:
 - User stories US-01 through US-30 are mapped to compliant YAML Use Case Interaction Specifications in [Specifications/Northstar Care Portal Interactions.md](Specifications/Northstar%20Care%20Portal%20Interactions.md), with an index link from section 4.9 in [Specifications/Northstar Care Portal.md](Specifications/Northstar%20Care%20Portal.md#L219).
 
 Current implementation progress against user stories:
-- Implemented in this iteration: US-16 (document search), US-18 (document classification), US-23 (assistant question), US-24 (assistant sources), US-25 (permission mismatch flags), US-26 (role-aware assistant mode).
+- Implemented in this iteration: US-16 (document search), US-18 (document classification), US-23 (assistant question/chat), US-24 (assistant sources), US-25 (permission mismatch flags and prompt-injection logging), US-26 (assistant SAFE/UNSAFE mode).
 - Full US-01 to US-30 implementation status (implemented/partial/missing) is tracked in [Documentation/User-Story-Coverage.md](Documentation/User-Story-Coverage.md).
 
 ## Azure DevOps pipeline

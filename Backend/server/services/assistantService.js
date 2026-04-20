@@ -1,150 +1,214 @@
-function canReadProcedure(userRole, procedure) {
-  if (userRole === "Admin") return true;
-  if (procedure.classification === "Internal") {
-    return ["SupportAgent", "Manager", "Clinician"].includes(userRole);
-  }
-  if (procedure.classification === "Confidential") {
-    return ["Clinician", "Manager"].includes(userRole);
-  }
-  return false;
+import { createPromptSafetyService } from "./promptSafetyService.js";
+import { createRetrievalService } from "./retrievalService.js";
+import { createLlmService } from "./llmService.js";
+
+function createId(prefix) {
+  return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 100000)}`;
 }
 
-function normalize(text) {
-  return String(text || "").toLowerCase();
-}
-
-function scoreMatch(question, fields) {
-  const q = normalize(question);
-  if (!q.trim()) return 1;
-  return fields.reduce((score, field) => {
-    const hay = normalize(field);
-    if (!hay) return score;
-    return score + (hay.includes(q) ? 3 : 0) + q.split(/\s+/).filter((part) => part && hay.includes(part)).length;
-  }, 0);
-}
-
-function pickTop(matches, max = 4) {
-  return matches
-    .sort((a, b) => b.score - a.score)
-    .slice(0, max)
-    .map((item) => item.source);
-}
-
-function makeAnswerText(question, sources) {
-  const prefix = question ? `Question: ${question}. ` : "";
-  if (sources.length === 0) {
-    return `${prefix}No strongly relevant internal sources were found.`;
-  }
-  const list = sources.map((source) => source.title).join(", ");
-  return `${prefix}Suggested guidance based on internal sources: ${list}.`;
+function toStoredEnvelope(result) {
+  return {
+    sources: result.sources,
+    permissionMismatches: result.permissionMismatches,
+    blocked: result.blocked,
+    suspiciousPrompt: result.security.suspicious,
+    suspiciousPatterns: result.security.suspiciousPatterns,
+    mode: result.mode,
+    createdAt: new Date().toISOString()
+  };
 }
 
 export function createAssistantService({ documentsRepository, proceduresRepository, adminRepository, auditRepository }) {
+  const promptSafetyService = createPromptSafetyService();
+  const retrievalService = createRetrievalService({ documentsRepository, proceduresRepository });
+  const llmService = createLlmService();
   const answerSources = new Map();
+  const conversations = new Map();
+
+  function writeEvent({ actorUserId, eventType, entityId, result, metadata }) {
+    auditRepository.write({
+      actorUserId,
+      eventType,
+      entityType: "assistant",
+      entityId,
+      result,
+      metadataJson: JSON.stringify({
+        timestamp: new Date().toISOString(),
+        ...metadata
+      })
+    });
+  }
+
+  function getMode() {
+    return adminRepository.getAssistantMode();
+  }
 
   return {
+    getMode() {
+      return { mode: getMode() };
+    },
     getRoleAwareMode() {
       return { mode: adminRepository.getAssistantRoleAwareMode() };
+    },
+    setMode({ mode, actorUserId }) {
+      if (!["safe", "unsafe"].includes(mode)) {
+        return { invalidMode: true };
+      }
+      const next = adminRepository.setAssistantMode(mode);
+      adminRepository.setAssistantRoleAwareMode(mode === "safe" ? "enabled" : "disabled");
+      writeEvent({
+        actorUserId,
+        eventType: "assistant_mode_changed",
+        entityId: "assistant_mode",
+        result: "success",
+        metadata: { mode: next }
+      });
+      return { mode: next };
     },
     setRoleAwareMode({ mode, actorUserId }) {
       if (!["enabled", "disabled"].includes(mode)) {
         return { invalidMode: true };
       }
-      const next = adminRepository.setAssistantRoleAwareMode(mode);
-      auditRepository.write({
-        actorUserId,
-        eventType: "assistant_mode_change",
-        entityType: "system_setting",
-        entityId: "assistant_role_aware_mode",
-        result: "success",
-        metadataJson: JSON.stringify({ mode: next })
-      });
-      return { mode: next };
+      return this.setMode({ mode: mode === "enabled" ? "safe" : "unsafe", actorUserId });
     },
-    ask({ question, user }) {
-      const roleAwareMode = adminRepository.getAssistantRoleAwareMode();
-      const useRoleAware = roleAwareMode === "enabled";
+    async ask({ question, user, conversationId }) {
+      const mode = getMode();
+      const activeConversationId = conversationId || createId("conv");
+      const history = conversations.get(activeConversationId) || [];
+      const inspection = promptSafetyService.inspectQuestion(question);
+      const privileged = retrievalService.isPrivilegedRole(user.role);
+      const blocked = promptSafetyService.shouldBlock({ mode, isPrivileged: privileged, inspection });
+      const retrieval = retrievalService.retrieve({ question, userRole: user.role, mode });
+      const answerId = createId("ans");
 
-      const visibleDocuments = useRoleAware
-        ? documentsRepository.listAccessible(user.role)
-        : documentsRepository.listAccessible("Admin");
+      const answer = blocked
+        ? promptSafetyService.createRefusal()
+        : await llmService.generateResponse({
+          mode,
+          question,
+          contextItems: retrieval.contextItems,
+          history,
+          blocked,
+          userId: user.id
+        });
 
-      const visibleProcedures = useRoleAware
-        ? proceduresRepository.list().filter((procedure) => canReadProcedure(user.role, procedure))
-        : proceduresRepository.list();
-
-      const documentMatches = visibleDocuments.map((doc) => ({
-        score: scoreMatch(question, [doc.title, doc.description, doc.category, doc.tags]),
-        source: {
-          sourceType: "document",
-          id: doc.id,
-          title: doc.title,
-          classification: doc.classification,
-          category: doc.category
-        }
-      }));
-
-      const procedureMatches = visibleProcedures.map((procedure) => ({
-        score: scoreMatch(question, [procedure.title, procedure.body_markdown, procedure.category]),
-        source: {
-          sourceType: "procedure",
-          id: procedure.id,
-          title: procedure.title,
-          classification: procedure.classification,
-          category: procedure.category
-        }
-      }));
-
-      const sources = pickTop([...documentMatches, ...procedureMatches]);
-      const permissionMismatches = [];
-
-      if (!useRoleAware) {
-        for (const source of sources) {
-          if (source.sourceType === "document") {
-            const allowed = documentsRepository.findByIdAccessible(source.id, user.role);
-            if (!allowed) {
-              permissionMismatches.push(source);
-            }
-          }
-          if (source.sourceType === "procedure") {
-            const procedure = proceduresRepository.findById(source.id);
-            if (procedure && !canReadProcedure(user.role, procedure)) {
-              permissionMismatches.push(source);
-            }
-          }
-        }
-      }
-
-      const answerId = `ans-${Date.now()}-${Math.floor(Math.random() * 100000)}`;
-      answerSources.set(answerId, { sources, permissionMismatches, createdAt: new Date().toISOString() });
-
-      auditRepository.write({
+      writeEvent({
         actorUserId: user.id,
         eventType: "assistant_query",
-        entityType: "assistant",
         entityId: answerId,
         result: "success",
-        metadataJson: JSON.stringify({ questionLength: String(question || "").length, sourceCount: sources.length })
+        metadata: {
+          userRole: user.role,
+          mode,
+          question,
+          responsePreview: String(answer || "").slice(0, 180),
+          sessionId: activeConversationId
+        }
       });
 
-      if (permissionMismatches.length > 0) {
-        auditRepository.write({
+      writeEvent({
+        actorUserId: user.id,
+        eventType: "assistant_retrieval",
+        entityId: answerId,
+        result: retrieval.sourceCount > 0 ? "success" : "warning",
+        metadata: {
+          userRole: user.role,
+          mode,
+          question,
+          sourceCount: retrieval.sourceCount,
+          internalSourceCount: retrieval.internalSourceCount,
+          sourceTitles: retrieval.sources.map((source) => source.title),
+          sessionId: activeConversationId
+        }
+      });
+
+      if (inspection.suspicious) {
+        writeEvent({
           actorUserId: user.id,
-          eventType: "assistant_permission_mismatch",
-          entityType: "assistant",
+          eventType: "assistant_prompt_injection_flag",
           entityId: answerId,
-          result: "warning",
-          metadataJson: JSON.stringify({ mismatchCount: permissionMismatches.length })
+          result: blocked ? "denied" : "warning",
+          metadata: {
+            userRole: user.role,
+            mode,
+            question,
+            suspiciousPatterns: inspection.matches,
+            blocked,
+            sessionId: activeConversationId
+          }
         });
       }
 
-      return {
-        answerId,
-        answer: makeAnswerText(question, sources),
-        sources,
-        permissionMismatches,
-        mode: roleAwareMode
+      if (retrieval.permissionMismatches.length > 0) {
+        writeEvent({
+          actorUserId: user.id,
+          eventType: "assistant_permission_mismatch",
+          entityId: answerId,
+          result: "warning",
+          metadata: {
+            userRole: user.role,
+            mode,
+            question,
+            mismatchCount: retrieval.permissionMismatches.length,
+            sourceTitles: retrieval.permissionMismatches.map((source) => source.title),
+            sessionId: activeConversationId
+          }
+        });
+      }
+
+      if (blocked) {
+        writeEvent({
+          actorUserId: user.id,
+          eventType: "assistant_response_blocked",
+          entityId: answerId,
+          result: "denied",
+          metadata: {
+            userRole: user.role,
+            mode,
+            question,
+            suspiciousPatterns: inspection.matches,
+            responsePreview: String(answer || "").slice(0, 180),
+            blocked: true,
+            sessionId: activeConversationId
+          }
+        });
+      }
+
+      const visibleSources = blocked ? [] : retrieval.sources;
+      const visibleMismatches = blocked ? [] : retrieval.permissionMismatches;
+      const assistantMessage = {
+        id: answerId,
+        role: "assistant",
+        content: answer,
+        sources: visibleSources
       };
+
+      conversations.set(activeConversationId, [
+        ...history,
+        { id: createId("msg"), role: "user", content: question },
+        assistantMessage
+      ]);
+
+      const result = {
+        conversationId: activeConversationId,
+        answerId,
+        answer,
+        message: assistantMessage,
+        sources: visibleSources,
+        permissionMismatches: visibleMismatches,
+        mode,
+        blocked,
+        security: {
+          suspicious: inspection.suspicious,
+          suspiciousPatterns: inspection.matches,
+          blocked,
+          internalSourceCount: blocked ? 0 : retrieval.internalSourceCount,
+          sourceCount: blocked ? 0 : retrieval.sourceCount
+        }
+      };
+
+      answerSources.set(answerId, toStoredEnvelope(result));
+      return result;
     },
     getAnswerSources({ answerId }) {
       return answerSources.get(answerId) || null;

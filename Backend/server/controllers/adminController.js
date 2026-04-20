@@ -28,6 +28,11 @@ export function createAdminController(adminService) {
       const items = adminService.listAuditLogs({
         eventType: req.query.eventType,
         result: req.query.result,
+        createdFrom: req.query.createdFrom,
+        createdTo: req.query.createdTo,
+        actorUser: req.query.user,
+        actorRole: req.query.role,
+        search: req.query.search,
         limit: req.query.limit
       });
       return res.status(200).json({ items, total: items.length });

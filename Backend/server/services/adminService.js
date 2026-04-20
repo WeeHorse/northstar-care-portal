@@ -1,5 +1,35 @@
 const ALLOWED_SECURITY_MODES = new Set(["secure", "misconfigured"]);
 
+function parseMetadata(metadataJson) {
+  if (!metadataJson) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(metadataJson);
+  } catch {
+    return null;
+  }
+}
+
+function buildAssistantDiagnostics(eventType, metadata) {
+  if (!eventType?.startsWith("assistant_") || !metadata) {
+    return null;
+  }
+
+  return {
+    mode: metadata.mode ?? null,
+    suspiciousPatterns: Array.isArray(metadata.suspiciousPatterns) ? metadata.suspiciousPatterns : [],
+    sourceCount: metadata.sourceCount ?? null,
+    internalSourceCount: metadata.internalSourceCount ?? null,
+    mismatchCount: metadata.mismatchCount ?? null,
+    blocked: metadata.blocked ?? null,
+    question: metadata.question ?? null,
+    responsePreview: metadata.responsePreview ?? null,
+    sessionId: metadata.sessionId ?? metadata.conversationId ?? null
+  };
+}
+
 export function createAdminService({ adminRepository, auditRepository }) {
   return {
     listUsers() {
@@ -54,17 +84,25 @@ export function createAdminService({ adminRepository, auditRepository }) {
       });
       return { mode: nextMode };
     },
-    listAuditLogs({ eventType, result, limit }) {
-      return auditRepository.list({ eventType, result, limit }).map((item) => ({
-        id: item.id,
-        actorUserId: item.actor_user_id,
-        eventType: item.event_type,
-        entityType: item.entity_type,
-        entityId: item.entity_id,
-        result: item.result,
-        metadataJson: item.metadata_json,
-        createdAt: item.created_at
-      }));
+    listAuditLogs({ eventType, result, limit, createdFrom, createdTo, actorUser, actorRole, search }) {
+      return auditRepository.list({ eventType, result, limit, createdFrom, createdTo, actorUser, actorRole, search }).map((item) => {
+        const metadata = parseMetadata(item.metadata_json);
+        return {
+          id: item.id,
+          actorUserId: item.actor_user_id,
+          actorUsername: item.actor_username,
+          actorFullName: item.actor_full_name,
+          actorRole: item.actor_role,
+          eventType: item.event_type,
+          entityType: item.entity_type,
+          entityId: item.entity_id,
+          result: item.result,
+          metadataJson: item.metadata_json,
+          metadata,
+          assistantDiagnostics: buildAssistantDiagnostics(item.event_type, metadata),
+          createdAt: item.created_at
+        };
+      });
     }
   };
 }

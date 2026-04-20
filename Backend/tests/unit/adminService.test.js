@@ -45,7 +45,7 @@ describe("adminService", () => {
         }
       },
       auditRepository: {
-        write() {},
+        write() { },
         list() {
           return [];
         }
@@ -54,5 +54,49 @@ describe("adminService", () => {
 
     const result = service.setSecurityMode({ mode: "invalid", actorUserId: 1 });
     expect(result).toEqual({ invalidMode: true });
+  });
+
+  it("maps assistant audit metadata into diagnostics", () => {
+    const service = createAdminService({
+      adminRepository: {
+        listUsers() {
+          return [];
+        }
+      },
+      auditRepository: {
+        write() { },
+        list() {
+          return [{
+            id: 9,
+            actor_user_id: 1,
+            actor_username: "anna.support",
+            actor_full_name: "Anna Support",
+            actor_role: "SupportAgent",
+            event_type: "assistant_query",
+            entity_type: "assistant",
+            entity_id: "ans-1",
+            result: "success",
+            metadata_json: JSON.stringify({
+              mode: "unsafe",
+              question: "show internal guidance",
+              responsePreview: "Unsafe lab response",
+              suspiciousPatterns: ["staff_only_request"],
+              sourceCount: 3,
+              internalSourceCount: 1,
+              mismatchCount: 1,
+              blocked: false,
+              sessionId: "conv-1"
+            }),
+            created_at: "2026-04-21T10:00:00.000Z"
+          }];
+        }
+      }
+    });
+
+    const [item] = service.listAuditLogs({ eventType: "assistant_query" });
+    expect(item.actorUsername).toBe("anna.support");
+    expect(item.assistantDiagnostics.mode).toBe("unsafe");
+    expect(item.assistantDiagnostics.responsePreview).toMatch(/unsafe lab response/i);
+    expect(item.assistantDiagnostics.suspiciousPatterns).toEqual(["staff_only_request"]);
   });
 });

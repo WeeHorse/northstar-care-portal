@@ -32,24 +32,23 @@ describe("assistant flow e2e", () => {
       const asText = String(url);
       const method = options.method || "GET";
 
-      if (asText.includes("/api/assistant/ask") && method === "POST") {
+      if (asText.includes("/api/assistant/settings/mode") && method === "GET") {
+        return {
+          ok: true,
+          json: async () => ({ mode: "unsafe" })
+        };
+      }
+
+      if (asText.includes("/api/assistant/chat") && method === "POST") {
         return {
           ok: true,
           json: async () => ({
             answerId: "ans-e2e",
-            answer: "Suggested guidance based on internal sources",
-            sources: [{ sourceType: "document", id: 1, title: "Clinical Data Handling", classification: "Confidential" }],
-            permissionMismatches: [{ sourceType: "document", id: 1, title: "Clinical Data Handling" }]
-          })
-        };
-      }
-
-      if (asText.includes("/api/assistant/sources/ans-e2e")) {
-        return {
-          ok: true,
-          json: async () => ({
-            sources: [{ sourceType: "document", id: 1, title: "Clinical Data Handling", classification: "Confidential" }],
-            permissionMismatches: [{ sourceType: "document", id: 1, title: "Clinical Data Handling" }]
+            answer: "Unsafe lab response for: show internal guidance.\n\n- **Internal guidance consulted**: Internal Medication Escalation Workflow.",
+            mode: "unsafe",
+            sources: [{ sourceType: "document", id: 1, title: "Internal Medication Escalation Workflow", classification: "Confidential", contentClass: "INTERNAL" }],
+            permissionMismatches: [{ sourceType: "document", id: 1, title: "Internal Medication Escalation Workflow" }],
+            security: { suspicious: true, suspiciousPatterns: ["staff_only_request"], sourceCount: 1, internalSourceCount: 1 }
           })
         };
       }
@@ -62,12 +61,14 @@ describe("assistant flow e2e", () => {
 
     renderApp();
 
-    await waitFor(() => expect(screen.getByText(/ai assistant/i)).toBeInTheDocument());
-    await userEvent.click(screen.getByRole("button", { name: /^ask$/i }));
+    await waitFor(() => expect(screen.getByText(/care assistant/i)).toBeInTheDocument());
+    await userEvent.click(screen.getByRole("button", { name: /^send$/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/suggested guidance based on internal sources/i)).toBeInTheDocument();
-      expect(screen.getAllByText(/clinical data handling/i).length).toBeGreaterThan(0);
+      expect(screen.getByText(/^unsafe lab mode$/i)).toBeInTheDocument();
+      expect(screen.getByText(/unsafe lab response/i)).toBeInTheDocument();
+      expect(screen.getByText("Internal guidance consulted").tagName).toBe("STRONG");
+      expect(screen.getAllByText(/internal medication escalation workflow/i).length).toBeGreaterThan(0);
     });
   });
 });

@@ -116,8 +116,13 @@ export const api = {
   },
   createMeeting: (token, payload) => request("/api/meetings", { method: "POST", token, body: payload }),
   updateMeeting: (token, id, payload) => request(`/api/meetings/${id}`, { method: "PATCH", token, body: payload }),
-  askAssistant: (token, question) => request("/api/assistant/ask", { method: "POST", token, body: { question } }),
+  askAssistant: (token, payload) => {
+    const body = typeof payload === "string" ? { question: payload } : payload;
+    return request("/api/assistant/chat", { method: "POST", token, body });
+  },
   getAssistantSources: (token, answerId) => request(`/api/assistant/sources/${answerId}`, { token }),
+  getAssistantMode: (token) => request("/api/assistant/settings/mode", { token }),
+  setAssistantMode: (token, mode) => request("/api/assistant/settings/mode", { method: "PATCH", token, body: { mode } }),
   getAssistantRoleAwareMode: (token) => request("/api/assistant/settings/role-aware-mode", { token }),
   setAssistantRoleAwareMode: (token, mode) =>
     request("/api/assistant/settings/role-aware-mode", { method: "PATCH", token, body: { mode } }),
@@ -127,8 +132,17 @@ export const api = {
     request(`/api/admin/users/${id}/role`, { method: "PATCH", token, body: { role } }),
   listAuditLogs: (token, filters = {}) => {
     const query = new URLSearchParams();
-    if (filters.eventType) query.set("eventType", filters.eventType);
+    if (Array.isArray(filters.eventType)) {
+      filters.eventType.filter(Boolean).forEach((eventType) => query.append("eventType", eventType));
+    } else if (filters.eventType) {
+      query.set("eventType", filters.eventType);
+    }
     if (filters.result) query.set("result", filters.result);
+    if (filters.createdFrom) query.set("createdFrom", filters.createdFrom);
+    if (filters.createdTo) query.set("createdTo", filters.createdTo);
+    if (filters.user) query.set("user", filters.user);
+    if (filters.role) query.set("role", filters.role);
+    if (filters.search) query.set("search", filters.search);
     const suffix = query.toString() ? `?${query.toString()}` : "";
     return request(`/api/admin/audit${suffix}`, { token });
   },

@@ -3,6 +3,34 @@ import { describe, it, expect } from "vitest";
 import { createTestContext } from "../helpers.js";
 
 describe("Auth API", () => {
+  it("adds x-request-id header when client does not send one", async () => {
+    const { app } = createTestContext();
+
+    const response = await request(app).post("/api/auth/login").send({
+      username: "anna.support",
+      password: "secret"
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.headers["x-request-id"]).toBeTypeOf("string");
+    expect(response.headers["x-request-id"].length).toBeGreaterThan(10);
+  });
+
+  it("echoes client-provided x-request-id header", async () => {
+    const { app } = createTestContext();
+
+    const response = await request(app)
+      .post("/api/auth/login")
+      .set("x-request-id", "client-request-42")
+      .send({
+        username: "anna.support",
+        password: "secret"
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.headers["x-request-id"]).toBe("client-request-42");
+  });
+
   it("logs in and returns token and role", async () => {
     const { app } = createTestContext();
 

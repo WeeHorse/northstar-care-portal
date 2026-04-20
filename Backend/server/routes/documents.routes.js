@@ -3,6 +3,7 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import multer from "multer";
 import { requireRole } from "../middleware/requireRole.js";
+import { logger } from "../utils/logger.js";
 
 export function createDocumentsRouter({ documentsController, authMiddleware, storage }) {
   const router = Router();
@@ -52,7 +53,11 @@ export function createDocumentsRouter({ documentsController, authMiddleware, sto
       req.uploadedFileName = result.fileName;
       next();
     } catch (err) {
-      console.error("Upload persistence error:", err);
+      logger.error("Document upload persistence failed", {
+        requestId: req.requestId,
+        originalFileName: req.file?.originalname,
+        error: err.message
+      });
       res.status(500).json({ error: "Failed to save file" });
     }
   }
